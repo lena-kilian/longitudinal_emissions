@@ -1,0 +1,14 @@
+*__pycache__*
+*.DS_Store
+
+# Files in subfolders
+data/
+outputs/
+
+# Specific files to ignore
+
+
+
+
+
+
