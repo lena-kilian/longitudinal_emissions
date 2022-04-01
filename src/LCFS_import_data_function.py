@@ -59,6 +59,26 @@ def import_lcfs(year, dvhh_file, dvper_file):
     useful_data['Income tax'] = temp.groupby(level=0)['income tax'].sum()
     useful_data['Socio-ec HRP'] = dvhh['a091']
     
+    # add household info to explore
+    hhd_code = ['a049', 'a053', 'a054', 
+                'a055', 'a056', 'a057', 
+                'a058', 'a060', 
+                'a062', 'a065p', 
+                'a069p',
+                'a070p', 'a071', 
+                'a091', 'a093', 'a094']
+    
+    hhd_name = ['Number of persons in household', 'Households with married women (econ active)', 'Number of workers in household', 
+                'Sampling month', 'Number of persons economically active', 'Men 65+  women 60+ economically active', 
+                'Others - not economically active', 'Gross normal income of HRP by range', 
+                'Composition of household', 'Age of household reference person by range - anonymised', 
+                'Type of household – anonymised',
+                'Age of oldest person in household - anonymised', 'Sex of oldest person in household',
+                'Socio-economic group - household reference person', 'Economic position of household reference person', 'NS - SEC 8 Class of household reference person']
+    
+    for i in range(len(hhd_code)):
+        useful_data[hhd_name[i]] = dvhh[hhd_code[i]]
+        
     # add family information
     family_code = ['a016','a017', 'a018', 
                    'a020', 'a021', 'a022', 'a023', 'a024', 'a025', 'a026', 'a027', 
