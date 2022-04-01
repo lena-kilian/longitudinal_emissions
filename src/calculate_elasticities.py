@@ -40,7 +40,7 @@ for year in years:
     hhd_ghg[year]['pop'] = hhd_ghg[year]['weight'] * hhd_ghg[year][pop_type]
     hhd_ghg[year]['Income anonymised'] = hhd_ghg[year]['Income anonymised'] * hhd_ghg[year]['weight'] /  hhd_ghg[year]['pop']
     
-    #hhd_ghg[year]['hhd_comp3'] = 'All'
+    hhd_ghg[year]['hhd_comp3'] = 'All'
     
     pc_ghg[year] = hhd_ghg[year].set_index(['case']).loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x * hhd_ghg[year]['weight'] / hhd_ghg[year]['pop'])
     people[year] = hhd_ghg[year][hhd_ghg[year].loc[:,:'hhd_comp3'].columns.tolist() + ['pop']].set_index(['case'])
@@ -78,39 +78,31 @@ temp[col_list] = temp[col_list].apply(lambda x: x / temp['pop'])
 data_09 = cp.copy(temp)
 
 # calculate elasticities
-hhd_comp = temp.index.tolist()
-
-income = data_07[['Income anonymised']].join(data_09[['Income anonymised']], lsuffix='_07', rsuffix='_09')
-income['diff'] = income['Income anonymised_09'] - income['Income anonymised_07']
-
-temp = data_07.append(data_09)
-temp[col_list] = temp[col_list].apply(lambda x: x * temp['pop'])
-temp = temp.sum(axis=0, level=0)
-temp[col_list] = temp[col_list].apply(lambda x: x / temp['pop'])
-
-income = income.join(temp)
+hhd_comp = data_09.index.tolist()
 
 results = pd.DataFrame(columns=['hhd_comp', 'inc_elasticity', 'product', 
                                 'income_diff', 'income_mean', 'ghg_diff', 'ghg_mean',
                                 'income_fraction', 'ghg_fraction'])
 for p in products:
     prod = p +'_ghg'
-    ghg_mean = income[[prod]]
     for hhd in hhd_comp:
         ghg_diff = data_09.loc[hhd, prod] - data_07.loc[hhd, prod]
+        ghg_mean = (data_09.loc[hhd, prod] + data_07.loc[hhd, prod]) / 2
+        inc_diff = data_09.loc[hhd, 'Income anonymised'] - data_07.loc[hhd, 'Income anonymised']
+        inc_mean = (data_09.loc[hhd, 'Income anonymised'] + data_07.loc[hhd, 'Income anonymised']) / 2
         
         temp = pd.DataFrame(columns=['hhd_comp', 'inc_elasticity', 'product'], index=[0])
         temp['hhd_comp'] = hhd
         temp['product'] = p
-        temp['income_diff'] = income.loc[hhd, 'diff']
-        temp['income_mean'] = income.loc[hhd, 'Income anonymised']
+        temp['income_diff'] = inc_diff
+        temp['income_mean'] = inc_mean
         temp['ghg_diff'] = ghg_diff
-        temp['ghg_mean'] = ghg_mean.loc[hhd, prod]
+        temp['ghg_mean'] = ghg_mean
         
         temp['income_fraction'] = temp['income_diff'] / temp['income_mean']
         temp['ghg_fraction'] = temp['ghg_diff'] / temp['ghg_mean']
         
-        temp['inc_elasticity'] = (ghg_diff / ghg_mean.loc[hhd, prod]) / (income.loc[hhd, 'diff'] / income.loc[hhd, 'Income anonymised'])
+        temp['inc_elasticity'] = (ghg_diff / ghg_mean) / (inc_diff / inc_mean)
 
         results = results.append(temp)
         
@@ -122,12 +114,16 @@ for p in products:
     for hhd in hhd_comp:
         ghg_diff = data_09.loc[hhd, prod] - data_07.loc[hhd, prod]
         exp_diff = data_09.loc[hhd, exp] - data_07.loc[hhd, exp]
+
+        ghg_mean = (data_09.loc[hhd, prod] + data_07.loc[hhd, prod]) / 2
+        exp_mean = (data_09.loc[hhd, exp] + data_07.loc[hhd, exp]) / 2
+        
         
         temp = pd.DataFrame(columns=['hhd_comp', 'exp_elasticity', 'product'], index=[0])
         temp['hhd_comp'] = hhd
         temp['product'] = p
         
-        temp['exp_elasticity'] = (ghg_diff / income.loc[hhd, prod]) / (exp_diff / income.loc[hhd, exp])
+        temp['exp_elasticity'] = (ghg_diff / ghg_mean) / (exp_diff / exp_mean)
         results_exp = results_exp.append(temp)
               
 all_results = results.set_index(['hhd_comp', 'product'])[['inc_elasticity']]\
