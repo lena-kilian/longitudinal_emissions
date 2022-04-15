@@ -24,11 +24,10 @@ flight_lookup = pd.read_excel(r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/P
 flight_lookup = flight_lookup.loc[flight_lookup['Variable'] == 'flydest']
 flight_lookup['Year'] = flight_lookup['LCF_Year'].astype(str).str[:4].astype(int)
 
-dvhh = {}; rawhh = {}
+rawhh = {}
 for year in years:
     dvhh_file = lcf_filepath + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
     rawhh_file = lcf_filepath + lcf_years[year] + '/tab/' + lcf_years[year] + '_rawhh_ukanon.tab'
-    dvhh[year] = pd.read_csv(dvhh_file, sep='\t', index_col=0); dvhh[year].columns = dvhh[year].columns.str.lower()
     rawhh[year] = pd.read_csv(rawhh_file, sep='\t', index_col=0, encoding='latin1'); rawhh[year].columns = rawhh[year].columns.str.lower()
 
 # Extract flydest data and link to weights to estimate number of flights

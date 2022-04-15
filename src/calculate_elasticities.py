@@ -20,10 +20,14 @@ cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal
 cat_lookup['ccp_code'] = [x.split(' ')[0] for x in cat_lookup['ccp']]
 cat_dict = dict(zip(cat_lookup['ccp_code'], cat_lookup['Category']))
 
+fam_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_type_lookup.xlsx')
+fam_code_lookup['Category_desc'] = [x.replace('  ', '') for x in fam_code_lookup['Category_desc']]
+
 years = list(range(2001, 2019))
 
 lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
                              '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019']))
+
 
 pop_type = 'no people weighted'
 
@@ -36,17 +40,18 @@ for year in years:
     hhdspend[year]['Total'] = hhdspend[year].loc[:,'1.1.1.1':'12.5.3.5'].sum(1)
     hhdspend[year] = hhdspend[year].rename(columns=cat_dict).sum(axis=1, level=0)
     
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')
+    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index(['case'])
     hhd_ghg[year]['pop'] = hhd_ghg[year]['weight'] * hhd_ghg[year][pop_type]
     hhd_ghg[year]['Income anonymised'] = hhd_ghg[year]['Income anonymised'] * hhd_ghg[year]['weight'] /  hhd_ghg[year]['pop']
     
-    hhd_ghg[year]['hhd_comp3'] = 'All'
+    #hhd_ghg[year]['new_desc'] = 'All'
     
-    pc_ghg[year] = hhd_ghg[year].set_index(['case']).loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x * hhd_ghg[year]['weight'] / hhd_ghg[year]['pop'])
-    people[year] = hhd_ghg[year][hhd_ghg[year].loc[:,:'hhd_comp3'].columns.tolist() + ['pop']].set_index(['case'])
+    pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x * hhd_ghg[year]['weight'] / hhd_ghg[year]['pop'])
+    people[year] = hhd_ghg[year][hhd_ghg[year].loc[:,:'new_desc'].columns.tolist() + ['pop']]
 
-hhd_name = ['hhd_comp3']
-
+var = 'Composition of household'
+code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'] == var]
+code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
     
 # calulate means
 products = cat_lookup[['Category']].drop_duplicates()['Category'].tolist() + ['Total']
@@ -56,10 +61,11 @@ year = 2007
 temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
 temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
 temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)\
-        .join(people[year][['Income anonymised', 'pop', 'hhd_comp3']])\
+        .join(people[year][['Income anonymised', 'pop', var]])\
             .join(hhdspend[year][products], lsuffix='_ghg', rsuffix='_exp')
+temp[var] = temp[var].map(code_dict)
 temp[col_list] = temp[col_list].apply(lambda x: x * temp['pop'])
-temp = temp.groupby(['hhd_comp3']).sum()
+temp = temp.groupby([var]).sum()
 temp[col_list] = temp[col_list].apply(lambda x: x / temp['pop'])
 
 data_07 = cp.copy(temp)
@@ -69,10 +75,11 @@ year = 2009
 temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
 temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
 temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)\
-        .join(people[year][['Income anonymised', 'pop', 'hhd_comp3']])\
+        .join(people[year][['Income anonymised', 'pop', var]])\
             .join(hhdspend[year][products], lsuffix='_ghg', rsuffix='_exp')
+temp[var] = temp[var].map(code_dict)
 temp[col_list] = temp[col_list].apply(lambda x: x * temp['pop'])
-temp = temp.groupby(['hhd_comp3']).sum()
+temp = temp.groupby([var]).sum()
 temp[col_list] = temp[col_list].apply(lambda x: x / temp['pop'])
 
 data_09 = cp.copy(temp)
@@ -127,5 +134,6 @@ for p in products:
         results_exp = results_exp.append(temp)
               
 all_results = results.set_index(['hhd_comp', 'product'])[['inc_elasticity']]\
-    .join(results_exp.set_index(['hhd_comp', 'product'])[['exp_elasticity']])
+    .join(results_exp.set_index(['hhd_comp', 'product'])[['exp_elasticity']])\
+        .reset_index()
 
