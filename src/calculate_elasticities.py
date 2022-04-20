@@ -12,6 +12,8 @@ import pandas as pd
 import copy as cp
 import numpy as np
 import LCFS_import_data_function as lcfs_import
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
@@ -42,26 +44,26 @@ for year in years:
     
     hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index(['case'])
     hhd_ghg[year]['pop'] = hhd_ghg[year]['weight'] * hhd_ghg[year][pop_type]
-    hhd_ghg[year]['Income anonymised'] = hhd_ghg[year]['Income anonymised'] * hhd_ghg[year]['weight'] /  hhd_ghg[year]['pop']
+    hhd_ghg[year]['income anonymised'] = hhd_ghg[year]['income anonymised'] * hhd_ghg[year]['weight'] /  hhd_ghg[year]['pop']
     
     #hhd_ghg[year]['new_desc'] = 'All'
     
     pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x * hhd_ghg[year]['weight'] / hhd_ghg[year]['pop'])
     people[year] = hhd_ghg[year][hhd_ghg[year].loc[:,:'new_desc'].columns.tolist() + ['pop']]
 
-var = 'Composition of household'
-code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'] == var]
+var = 'composition of household'
+code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == var]
 code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
     
 # calulate means
 products = cat_lookup[['Category']].drop_duplicates()['Category'].tolist() + ['Total']
-col_list = [x + '_ghg' for x in products] + [x + '_exp' for x in products] + ['Income anonymised']
+col_list = [x + '_ghg' for x in products] + [x + '_exp' for x in products] + ['income anonymised']
 
 year = 2007
 temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
 temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
 temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)\
-        .join(people[year][['Income anonymised', 'pop', var]])\
+        .join(people[year][['income anonymised', 'pop', var]])\
             .join(hhdspend[year][products], lsuffix='_ghg', rsuffix='_exp')
 temp[var] = temp[var].map(code_dict)
 temp[col_list] = temp[col_list].apply(lambda x: x * temp['pop'])
@@ -75,7 +77,7 @@ year = 2009
 temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
 temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
 temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)\
-        .join(people[year][['Income anonymised', 'pop', var]])\
+        .join(people[year][['income anonymised', 'pop', var]])\
             .join(hhdspend[year][products], lsuffix='_ghg', rsuffix='_exp')
 temp[var] = temp[var].map(code_dict)
 temp[col_list] = temp[col_list].apply(lambda x: x * temp['pop'])
@@ -95,8 +97,8 @@ for p in products:
     for hhd in hhd_comp:
         ghg_diff = data_09.loc[hhd, prod] - data_07.loc[hhd, prod]
         ghg_mean = (data_09.loc[hhd, prod] + data_07.loc[hhd, prod]) / 2
-        inc_diff = data_09.loc[hhd, 'Income anonymised'] - data_07.loc[hhd, 'Income anonymised']
-        inc_mean = (data_09.loc[hhd, 'Income anonymised'] + data_07.loc[hhd, 'Income anonymised']) / 2
+        inc_diff = data_09.loc[hhd, 'income anonymised'] - data_07.loc[hhd, 'income anonymised']
+        inc_mean = (data_09.loc[hhd, 'income anonymised'] + data_07.loc[hhd, 'income anonymised']) / 2
         
         temp = pd.DataFrame(columns=['hhd_comp', 'inc_elasticity', 'product'], index=[0])
         temp['hhd_comp'] = hhd
@@ -137,3 +139,13 @@ all_results = results.set_index(['hhd_comp', 'product'])[['inc_elasticity']]\
     .join(results_exp.set_index(['hhd_comp', 'product'])[['exp_elasticity']])\
         .reset_index()
 
+
+fig, ax = plt.subplots(figsize=(7.5,5))
+ax.axhline(0, linestyle='--', c='black', lw=0.5)
+sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] != 'Total'], y='inc_elasticity', style='product', x='hhd_comp', color='k', s=100)
+sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] == 'Total'], y='inc_elasticity', x='hhd_comp', color='#78AAC8', s=100)
+ax.tick_params(axis='x', labelrotation=90)
+ax.set_xlabel('')
+ax.set_ylabel('Income elasticity')
+#plt.yscale('log')
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots.png', bbox_inches='tight')

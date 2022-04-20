@@ -15,7 +15,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-pop = 'no people'
+pop = 'no people weighted'
+
+if pop == 'no people':
+    axis = 'tCO$_{2}$e / capita'
+else:
+    axis = 'tCO$_{2}$e / adult'
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -83,7 +88,7 @@ for item in ['gross normal income of hrp by range']:
     
     #product_list = ['Total_ghg']
     if item != 'new_desc':
-        code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'] == item]
+        code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
         code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
     for i in range(len(product_list)):
         product = product_list[i]
@@ -92,7 +97,7 @@ for item in ['gross normal income of hrp by range']:
             temp['family_code'] = temp['family_code'].map(code_dict)
         fig, ax = plt.subplots(figsize=(7, 5))
         sns.boxplot(ax=ax, data=temp, hue='year', x='ghg', y='family_code', fliersize=0.75, palette='Blues')
-        ax.set_xlabel('tCO$_{2}$e / adult')
+        ax.set_xlabel(axis)
         ax.set_ylabel('')
         ax.legend(loc='lower right', title='Year')
         plt.title(product)
@@ -119,7 +124,7 @@ for item in ['composition of household']: #'new_desc']:
     temp2 = temp2.merge(med, on = ['family_code']).sort_values('median', ascending=False)
     product_list = data[['CCP1']].drop_duplicates()['CCP1']
     if item != 'new_desc':
-        code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'] == item]
+        code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
         code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
     for i in range(len(product_list)):
         product = product_list[i]
@@ -130,7 +135,7 @@ for item in ['composition of household']: #'new_desc']:
             temp['family_code'] = temp['family_code'] + '_' + second_var + '_' + temp[second_var].astype(str)
         fig, ax = plt.subplots(figsize=(7, 5))
         sns.boxplot(ax=ax, data=temp, hue='year', x='ghg', y='family_code', fliersize=0.75, palette='Blues')
-        ax.set_xlabel('tCO$_{2}$e / adult')
+        ax.set_xlabel(axis)
         ax.set_ylabel('')
         ax.legend(loc='lower right', title='Year')
         plt.title(product)
@@ -166,4 +171,19 @@ plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot.png',
             bbox_inches='tight')
 plt.show()
  
+# get summary statistics
+item = 'composition of household'
 
+code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
+code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
+summary = data.loc[(data['var'] == item) & (data['year'] >= 2007) & (data['year'] <= 2009)]
+summary['family_code'] = summary['family_code'].map(code_dict)
+
+temp = cp.copy(summary)
+temp['ghg'] = temp['ghg'] * temp[pop]
+temp = temp.groupby(['family_code', 'var', 'year', 'CCP1']).sum()
+temp[axis] = temp['ghg'] / temp[pop]
+
+summary = summary.groupby(['family_code', 'var', 'year', 'CCP1']).describe()[['ghg']].droplevel(axis=1, level=0).join(temp[[axis]]).droplevel(axis=0, level=1)
+summary['IQR'] = summary['75%'] - summary['25%']
+summary = summary.unstack(['year'])
