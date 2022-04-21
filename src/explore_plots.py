@@ -13,6 +13,7 @@ import copy as cp
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+import LCFS_import_data_function as lcfs_import
 
 
 pop = 'no people weighted'
@@ -33,18 +34,32 @@ fam_code_lookup['Category_desc'] = [x.replace('  ', '') for x in fam_code_lookup
 
 years = list(range(2001, 2019))
 
+lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
+                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019']))
 
+inflation_070809 = [1, 1.04, 1.03]
 # import data
 hhd_ghg = {}; pc_ghg = {}; people = {}
 for year in years:
+    file_dvhh = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
+    file_dvper = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
+    income = lcfs_import.import_lcfs(year, file_dvhh, file_dvper).drop_duplicates()
+    income.columns = [x.lower() for x in income.columns]
+    if year >= 2007 and year <= 2009:
+        income['income anonymised'] = income['income anonymised'] / inflation_070809[year-2007]
+    income = income[['income anonymised']].rename(columns={'income anonymised':'hhld_income'})
+    
+    
     hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index(['case'])
     pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year][pop])
-    people[year] = hhd_ghg[year].loc[:,:'new_desc']
+    people[year] = hhd_ghg[year].loc[:,:'new_desc'].join(income[['hhld_income']])
+    people[year]['pc_income'] = people[year]['hhld_income'] / people[year][pop]
+    people[year]['population'] = people[year][pop] * people[year]['weight']
 
 #hhd_name = ['new_desc']
 
 
-hhd_name = ['new_desc', 
+hhd_name = ['new_desc',
             'gross normal income of hrp by range', 'composition of household', 
             'ns - sec 8 class of household reference person',
             'economic position of household reference person']
@@ -153,6 +168,24 @@ for item in ['composition of household']: #'new_desc']:
             temp3['Category'] = item
             count= count.append(temp3)
         a += 1
+        
+        
+# all households 
+temp2 = data.loc[(data['CCP1'] != 'Total_ghg') & (data['year'] >= 2007) & (data['year'] <= 2009)]
+med = temp2.groupby(['CCP1']).median()[['ghg']].rename(columns={'ghg':'median'}).reset_index()
+temp = temp2.merge(med, on = ['CCP1']).sort_values('median', ascending=False)
+
+fig, ax = plt.subplots(figsize=(7, 5))
+sns.boxplot(ax=ax, data=temp, hue='year', x='ghg', y='CCP1', fliersize=0.75, palette='Blues')
+ax.set_xlabel(axis)
+ax.set_ylabel('')
+ax.legend(loc='lower right', title='Year')
+plt.title(product)
+plt.xlim(0, 30)
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/all_households.png', bbox_inches='tight')
+plt.show()
+
+
 
 # Linegraph
 temp = data.loc[(data['CCP1'] != 'Total_ghg')]
@@ -187,3 +220,31 @@ temp[axis] = temp['ghg'] / temp[pop]
 summary = summary.groupby(['family_code', 'var', 'year', 'CCP1']).describe()[['ghg']].droplevel(axis=1, level=0).join(temp[[axis]]).droplevel(axis=0, level=1)
 summary['IQR'] = summary['75%'] - summary['25%']
 summary = summary.unstack(['year'])
+
+
+
+# get summary statistics
+item = 'composition of household'
+
+income = pd.DataFrame(columns=['family_code', 'year', pop, 'CCP1', 'ghg'])
+for year in [2007, 2008, 2009]:
+    temp = people[year].reset_index()[[item, pop, 'hhld_income']].reset_index().rename(columns={item:'family_code'})
+    temp['ghg'] = temp['hhld_income'] / temp[pop]
+    temp['CCP1'] = 'Income'
+    temp['year'] = year
+    income = income.append(temp)
+    income['var'] = item
+    
+code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
+code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
+summary = data.loc[(data['var'] == item) & (data['year'] >= 2007) & (data['year'] <= 2009)].append(income[['var','family_code', 'year', 'CCP1', 'ghg', pop]])
+summary['family_code'] = summary['family_code'].map(code_dict)
+
+temp = cp.copy(summary)
+temp['ghg'] = temp['ghg'] * temp[pop]
+temp = temp.groupby(['family_code', 'var', 'year', 'CCP1']).sum()
+temp[axis] = temp['ghg'] / temp[pop]
+
+summary = summary.groupby(['family_code', 'var', 'year', 'CCP1']).describe()[['ghg']].droplevel(axis=1, level=0).join(temp[[axis]]).droplevel(axis=0, level=1)
+summary['IQR'] = summary['75%'] - summary['25%']
+summary = summary.unstack(['year', 'family_code'])[['count', axis]]

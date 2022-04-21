@@ -33,8 +33,10 @@ lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005',
 
 pop_type = 'no people weighted'
 
+inflation_070809 = [0.96, 1, 1.04, 1.03]
+
 # import data
-hhd_ghg = {}; pc_ghg = {}; people = {}; hhdspend = {}
+hhd_ghg = {}; pc_ghg = {}; people = {}; hhdspend = {}; income = {}
 for year in years:
     file_dvhh = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
     file_dvper = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
@@ -45,7 +47,8 @@ for year in years:
     hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index(['case'])
     hhd_ghg[year]['pop'] = hhd_ghg[year]['weight'] * hhd_ghg[year][pop_type]
     hhd_ghg[year]['income anonymised'] = hhd_ghg[year]['income anonymised'] * hhd_ghg[year]['weight'] /  hhd_ghg[year]['pop']
-    
+    if year >= 2006 and year <= 2009:
+        hhd_ghg[year]['income anonymised'] = hhd_ghg[year]['income anonymised'] / inflation_070809[year-2007]
     #hhd_ghg[year]['new_desc'] = 'All'
     
     pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x * hhd_ghg[year]['weight'] / hhd_ghg[year]['pop'])
@@ -147,5 +150,40 @@ sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] == 'Total'], 
 ax.tick_params(axis='x', labelrotation=90)
 ax.set_xlabel('')
 ax.set_ylabel('Income elasticity')
-#plt.yscale('log')
+ax.set_ylim(-40, 20)
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots.png', bbox_inches='tight')
+
+
+
+
+# calculate without household comp
+year1 = 2006
+year2 = 2009
+
+cols = hhd_ghg[year1].loc[:,'1.1.1.1':'12.5.3.5'].columns.tolist() + ['income anonymised']
+
+temp = hhd_ghg[year1][cols + [pop_type]]
+temp['year'] = 'ghg_' + str(year1)
+
+temp2 = hhd_ghg[year2][cols + [pop_type]]
+temp2['year'] = 'ghg_' + str(year2)
+
+temp = temp.append(temp2)
+temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
+temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)
+
+cols = ['Food and Drinks', 'Other consumption', 'Recreation, culture, and clothing', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels',
+        'Private and public road transport', 'Air transport', 'Total', 'income anonymised']
+
+temp[cols] = temp[cols].apply(lambda x: x*temp[pop_type])
+temp = temp.groupby('year').sum()
+temp = temp[cols].apply(lambda x: x/temp[pop_type]).T
+
+income_diff = temp.loc['income anonymised', 'ghg_' + str(year2)] - temp.loc['income anonymised', 'ghg_' + str(year1)]
+income_mean = (temp.loc['income anonymised', 'ghg_' + str(year2)] + temp.loc['income anonymised', 'ghg_' + str(year1)]) / 2
+
+temp['ghg_diff'] = temp['ghg_' + str(year2)] - temp['ghg_' + str(year1)]
+temp['ghg_mean'] = (temp['ghg_' + str(year2)] + temp['ghg_' + str(year1)]) / 2
+
+temp['elasticity'] = (temp['ghg_diff'] / temp['ghg_mean']) / (income_diff / income_mean)
+
