@@ -43,9 +43,7 @@ for year in years:
     
     # adjust to physical units
     # flights
-    flights[str(year)] = flights[str(year)].join(hhdspend[year][['7.3.4.1', '7.3.4.2']]).rename(columns={'7.3.4.1':'dom_spend', '7.3.4.2':'int_spend'})
-    flights[str(year)]['7.3.4.1'] = (flights[str(year)]['Domestic'] / flights[str(year)]['Domestic'].sum()) * flights[str(year)]['dom_spend'].sum()
-    flights[str(year)]['7.3.4.2'] = (flights[str(year)]['International'] / flights[str(year)]['International'].sum()) * flights[str(year)]['int_spend'].sum()
+    flights[str(year)] = flights[str(year)].rename(columns={'7.3.4.1_proxy':'7.3.4.1', '7.3.4.2_proxy':'7.3.4.2'})
     hhdspend[year] = hhdspend[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[str(year)][['7.3.4.1', '7.3.4.2']])
     
     # rent

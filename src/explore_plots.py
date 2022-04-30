@@ -59,10 +59,7 @@ for year in years:
 #hhd_name = ['new_desc']
 
 
-hhd_name = ['new_desc',
-            'gross normal income of hrp by range', 'composition of household', 
-            'ns - sec 8 class of household reference person',
-            'economic position of household reference person']
+hhd_name = ['composition of household', 'gross normal income of hrp by range']
 
 second_var = None #'number of persons economically active'
 
@@ -71,8 +68,6 @@ if second_var != None:
 else:
     data = pd.DataFrame(columns=['case', 'family_code', 'var', 'year', 'CCP1', 'ghg'])
     
-
-
 
 for item in hhd_name:
     for year in years:
@@ -203,6 +198,51 @@ plt.xlabel('Year')
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot.png',
             bbox_inches='tight')
 plt.show()
+
+
+# Linegraph with or without children
+item = 'composition of household'
+code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
+code_dict['new'] = 'Adults only'
+code_dict.loc[code_dict['Category_desc'].str.contains('child') == True, 'new'] = 'Adults with children'
+code_dict.loc[code_dict['Category_desc'] == 'Other', 'new'] = 'Other'
+code_dict = dict(zip(code_dict['Category_num'], code_dict['new']))
+
+temp = data.loc[(data['CCP1'] != 'Total_ghg') & (data['var'] != item)]
+temp['family_code'] = temp['family_code'].map(code_dict)
+temp['ghg'] = temp['ghg'] * temp[pop]
+temp = temp.groupby(['year', 'CCP1', 'family_code']).sum().reset_index()
+temp['ghg'] = temp['ghg'] / temp[pop]
+temp['year'] = pd.to_datetime(temp['year'], format="%Y")
+temp = temp.set_index(['year', 'CCP1', 'family_code']).unstack('CCP1')[['ghg']].droplevel(axis=1, level=0)
+temp2 = cp.copy(temp).reset_index()
+
+# Plots
+for hhld in ['Adults only', 'Adults with children']:
+    temp = temp2.loc[temp2['family_code'] == hhld].drop('family_code', axis=1).set_index('year')
+    plt.stackplot(temp.index, np.array(temp.T), labels=temp.columns.tolist())
+    plt.legend(title='Consumption Category', bbox_to_anchor=(1.75, 0.75))
+    plt.ylabel('tCO$_{2}$e / adult')
+    plt.xlabel('Year')
+    plt.ylim(0, 13)
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHD_' + hhld + '.png',
+            bbox_inches='tight')
+    plt.show()
+
+temp = temp2.loc[temp2['family_code'] != 'Other'].set_index(['year', 'family_code']).stack().reset_index()\
+    .rename(columns={0:'ghg', 'family_code':'Household Type', 'CCP1':'Product Category'})
+
+fig, ax = plt.subplots(figsize=(7.5, 5))
+sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', style='Household Type')
+ax.set_ylabel('tCO$_{2}$e / adult'); ax.set_xlabel('Year')
+plt.legend(bbox_to_anchor=(1.6, 0.75))
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs.png',
+            bbox_inches='tight')
+plt.show()
+
+#temp2.loc[temp2['family_code'] == hhld].drop('family_code', axis=1).set_index('year').plot(kind='bar', stacked=True)
+
+
  
 # get summary statistics
 item = 'composition of household'

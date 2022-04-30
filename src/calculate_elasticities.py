@@ -14,6 +14,8 @@ import numpy as np
 import LCFS_import_data_function as lcfs_import
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.patches import Patch
+
 
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
@@ -145,13 +147,17 @@ all_results = results.set_index(['hhd_comp', 'product'])[['inc_elasticity']]\
 
 fig, ax = plt.subplots(figsize=(7.5,5))
 ax.axhline(0, linestyle='--', c='black', lw=0.5)
-sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] != 'Total'], y='inc_elasticity', style='product', x='hhd_comp', color='k', s=100)
-sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] == 'Total'], y='inc_elasticity', x='hhd_comp', color='#78AAC8', s=100)
+sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] != 'Total'], style='product', y='inc_elasticity', 
+                x='hhd_comp', color='k', s=100)
+sns.set_palette(sns.color_palette(['#C54A43'])) # '#78AAC8'
+sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] == 'Total'], y='inc_elasticity', hue='product', x='hhd_comp', s=100)
 ax.tick_params(axis='x', labelrotation=90)
 ax.set_xlabel('')
 ax.set_ylabel('Income elasticity')
-ax.set_ylim(-40, 20)
+ax.set_ylim(-32.5, 17.5)
+sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1, 0.8), title='Product')
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots.png', bbox_inches='tight')
+
 
 
 
