@@ -55,6 +55,7 @@ for year in years:
     people[year] = hhd_ghg[year].loc[:,:'new_desc'].join(income[['hhld_income']])
     people[year]['pc_income'] = people[year]['hhld_income'] / people[year][pop]
     people[year]['population'] = people[year][pop] * people[year]['weight']
+    people[year].loc[people[year]['type of household'] == 1, 'composition of household'] = 100
 
 #hhd_name = ['new_desc']
 
@@ -100,6 +101,7 @@ for item in ['gross normal income of hrp by range']:
     if item != 'new_desc':
         code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
         code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
+        code_dict[100] = 'Pensioner household'
     for i in range(len(product_list)):
         product = product_list[i]
         temp = temp2.loc[(temp2['CCP1'] == product)].sort_values('family_code', ascending=False)
@@ -136,6 +138,7 @@ for item in ['composition of household']: #'new_desc']:
     if item != 'new_desc':
         code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
         code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
+        code_dict[100] = 'Pensioner household'
     for i in range(len(product_list)):
         product = product_list[i]
         temp = temp2.loc[(temp2['CCP1'] == product)].sort_values('family_code')
@@ -219,7 +222,8 @@ temp2 = cp.copy(temp).reset_index()
 
 # Plots
 for hhld in ['Adults only', 'Adults with children']:
-    temp = temp2.loc[temp2['family_code'] == hhld].drop('family_code', axis=1).set_index('year')
+    temp = cp.copy(temp2)
+    temp = temp.loc[temp['family_code'] == hhld].drop('family_code', axis=1).set_index('year')
     plt.stackplot(temp.index, np.array(temp.T), labels=temp.columns.tolist())
     plt.legend(title='Consumption Category', bbox_to_anchor=(1.75, 0.75))
     plt.ylabel('tCO$_{2}$e / adult')
@@ -240,8 +244,43 @@ plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs.png
             bbox_inches='tight')
 plt.show()
 
+
+temp = data.loc[(data['CCP1'] != 'Total_ghg') & (data['var'] != item)]
+temp['family_code'] = 'All'
+temp['ghg'] = temp['ghg'] * temp[pop]
+temp = temp.groupby(['year', 'CCP1', 'family_code']).sum().reset_index()
+temp['ghg'] = temp['ghg'] / temp[pop]
+temp['year'] = pd.to_datetime(temp['year'], format="%Y")
+temp = temp.set_index(['year', 'CCP1', 'family_code']).unstack('CCP1')[['ghg']].droplevel(axis=1, level=0)
+temp2 = cp.copy(temp).reset_index()
+
+temp = temp2.loc[temp2['family_code'] != 'Other'].set_index(['year', 'family_code']).stack().reset_index()\
+    .rename(columns={0:'ghg', 'family_code':'Household Type', 'CCP1':'Product Category'})
+
+fig, ax = plt.subplots(figsize=(7.5, 5))
+sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category')
+ax.set_ylabel('tCO$_{2}$e / adult'); ax.set_xlabel('Year')
+plt.legend(bbox_to_anchor=(1.6, 0.75))
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_all.png',
+            bbox_inches='tight')
+plt.show()
+
 #temp2.loc[temp2['family_code'] == hhld].drop('family_code', axis=1).set_index('year').plot(kind='bar', stacked=True)
 
+
+
+temp = temp2.drop('family_code', axis=1).set_index('year').T
+values_01 = temp.iloc[:,0]
+temp = temp.apply(lambda x: x/values_01*100).stack().reset_index().rename(columns={0:'ghg', 'CCP1':'Product Category'})
+    
+fig, ax = plt.subplots(figsize=(7.5, 5))
+sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category')
+ax.set_ylabel('Percentage change in tCO$_{2}$e / adult compared to 2001'); ax.set_xlabel('Year')
+plt.legend(bbox_to_anchor=(1.6, 0.75))
+plt.axhline(y=100, linestyle=':', color='k', lw=0.5)
+plt.ylim(50,150)
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_pct.png', bbox_inches='tight')
+plt.show()
 
  
 # get summary statistics

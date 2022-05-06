@@ -163,7 +163,7 @@ plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity
 
 
 # calculate without household comp
-year1 = 2006
+year1 = 2007
 year2 = 2009
 
 cols = hhd_ghg[year1].loc[:,'1.1.1.1':'12.5.3.5'].columns.tolist() + ['income anonymised']
@@ -191,5 +191,49 @@ income_mean = (temp.loc['income anonymised', 'ghg_' + str(year2)] + temp.loc['in
 temp['ghg_diff'] = temp['ghg_' + str(year2)] - temp['ghg_' + str(year1)]
 temp['ghg_mean'] = (temp['ghg_' + str(year2)] + temp['ghg_' + str(year1)]) / 2
 
-temp['elasticity'] = (temp['ghg_diff'] / temp['ghg_mean']) / (income_diff / income_mean)
+temp['inc_elasticity'] = (temp['ghg_diff'] / temp['ghg_mean']) / (income_diff / income_mean)
+temp['hhd_comp'] = 'All households'
+
+product_dict = {'Recreation, culture, and clothing':'Recreation,\nculture, and\nclothing',
+                'Housing, water and waste':'Housing, water\nand waste',
+                'Electricity, gas, liquid and solid fuels':'Electricity, gas,\nliquid and solid\nfuels',
+                'Private and public road transport':'Private and public\nroad transport',
+                'Food and Drinks':'Food and Drinks',
+                'Other consumption':'Other\nconsumption',
+                'Air transport':'Air transport'}
+
+w=5; h=4
+
+fig, ax = plt.subplots(figsize=(w, h))
+ax.axhline(0, linestyle='--', c='black', lw=0.5)
+plot_data = all_results.loc[all_results['product'] != 'Total'].sort_values('product')
+plot_data['product'] = plot_data['product'].map(product_dict)
+sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity', style='hhd_comp', color='k', s=100)
+sns.set_palette(sns.color_palette(['#C54A43'])) # '#78AAC8'
+plot_data = temp.iloc[:-2,:].reset_index().rename(columns={'index':'product'}).sort_values('product')
+plot_data['product'] = plot_data['product'].map(product_dict)
+sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity',  hue='hhd_comp', s=100)
+ax.tick_params(axis='x', labelrotation=90)
+ax.set_xlabel('')
+ax.set_ylabel('Income elasticity')
+ax.set_ylim(-85, 20)
+sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1, 0.8), title='Household Composition')
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots_reversed.png', bbox_inches='tight', dpi=200)
+
+fig, ax = plt.subplots(figsize=(w, h))
+ax.axhline(0, linestyle='--', c='black', lw=0.5)
+plot_data = all_results.loc[all_results['product'] != 'Total'].sort_values('product')
+plot_data['product'] = plot_data['product'].map(product_dict)
+sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity', style='hhd_comp', color='k', s=100)
+sns.set_palette(sns.color_palette(['#C54A43'])) # '#78AAC8'
+plot_data = temp.iloc[:-2,:].reset_index().rename(columns={'index':'product'}).sort_values('product')
+plot_data['product'] = plot_data['product'].map(product_dict)
+sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity',  hue='hhd_comp', s=100)
+ax.tick_params(axis='x', labelrotation=90)
+ax.set_xlabel('')
+ax.set_ylabel('Income elasticity')
+ax.set_ylim(-10, 10)
+sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1, 0.8), title='Household Composition')
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots_reversed_detail.png', bbox_inches='tight', dpi=200)
+
 

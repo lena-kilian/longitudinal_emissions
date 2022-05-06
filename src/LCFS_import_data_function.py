@@ -67,7 +67,7 @@ def import_lcfs(year, dvhh_file, dvper_file):
                 'a069p',
                 'a070p', 'a071', 
                 'a091', 'a093', 
-                'a094']
+                'a069p', 'a094']
     
     hhd_name = ['Number of persons in household', 'Households with married women (econ active)', 'Number of workers in household', 
                 'Sampling month', 'Number of persons economically active', 'Men 65+  women 60+ economically active', 
@@ -76,7 +76,7 @@ def import_lcfs(year, dvhh_file, dvper_file):
                 'Type of household – anonymised',
                 'Age of oldest person in household - anonymised', 'Sex of oldest person in household',
                 'Socio-economic group - household reference person', 'Economic position of household reference person', 
-                'NS - SEC 8 Class of household reference person']
+                'Type of household', 'NS - SEC 8 Class of household reference person']
     
     for i in range(len(hhd_code)):
         useful_data[hhd_name[i]] = dvhh[hhd_code[i]]

@@ -10,7 +10,6 @@ Aggregating expenditure groups for LCFS by OAC x Region Profiles & UK Supergroup
 
 import pandas as pd
 import estimate_emissions_main_function_2021 as estimate_emissions
-import pysal as ps
 
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
@@ -72,7 +71,9 @@ for year in years:
         new_desc[year].loc[(new_desc[year]['people aged ' + item] > 2), 'cat_people aged ' + item] = '3+ people aged ' + item
     
     new_desc_lookup.columns = [x.lower() for x in new_desc_lookup.columns.tolist()]
-    new_desc[year] = new_desc[year].merge(new_desc_lookup, how='left', on=new_desc_lookup.columns.tolist()[:6])
+    merge_cols = new_desc_lookup.columns.tolist()[:6]
+    new_desc_lookup[merge_cols] = new_desc_lookup[merge_cols].apply(lambda x: x.str.lower())
+    new_desc[year] = new_desc[year][['case'] + merge_cols].merge(new_desc_lookup, how='left', on=merge_cols)
     
     # Drop unnecessary
     people[year] = people[year].merge(new_desc[year][['new_desc', 'case']], how='left', on='case')
