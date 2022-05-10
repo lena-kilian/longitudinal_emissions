@@ -78,6 +78,20 @@ for year in years:
     # Drop unnecessary
     people[year] = people[year].merge(new_desc[year][['new_desc', 'case']], how='left', on='case')
     
+    # add other household types
+    # pensioner housheolds
+    people[year].loc[(people[year]['type of household'] == 1) & 
+                     (people[year]['no people'] == 1), 'composition of household'] = 101
+    people[year].loc[(people[year]['type of household'] == 1) & 
+                     (people[year]['no people'] > 1), 'composition of household'] = 102
+    # young adult households
+    people[year].loc[(people[year]['new_desc'] == '1 adult (18-44)') & 
+                     (people[year]['age of oldest person in household - anonymised'] < 30), 'composition of household'] = 201
+    people[year].loc[(people[year]['new_desc'] == '2 adults (18-44)') & 
+                     (people[year]['age of oldest person in household - anonymised'] < 30), 'composition of household'] = 202
+    people[year].loc[(people[year]['new_desc'] == '3+ adults (18-44)') & 
+                     (people[year]['age of oldest person in household - anonymised'] < 30), 'composition of household'] = 203
+    
     # gather spend
     lcfs[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].astype(float).apply(lambda x: x*lcfs[year]['weight'])
     

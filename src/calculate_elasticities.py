@@ -9,19 +9,15 @@ Aggregating expenditure groups for LCFS by OAC x Region Profiles & UK Supergroup
 """
 
 import pandas as pd
-import copy as cp
-import numpy as np
 import LCFS_import_data_function as lcfs_import
-import matplotlib.pyplot as plt
-import seaborn as sns
-from matplotlib.patches import Patch
-
+import calculate_elasticities_function as cef
 
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
 cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
 cat_lookup['ccp_code'] = [x.split(' ')[0] for x in cat_lookup['ccp']]
+
 cat_dict = dict(zip(cat_lookup['ccp_code'], cat_lookup['Category']))
 
 fam_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_type_lookup.xlsx')
@@ -32,14 +28,14 @@ years = list(range(2001, 2019))
 lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
                              '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019']))
 
-
 pop_type = 'no people weighted'
 
 inflation_070809 = [0.96, 1, 1.04, 1.03]
 
+year1 = 2007; year2 = 2009
 # import data
 hhd_ghg = {}; pc_ghg = {}; people = {}; hhdspend = {}; income = {}
-for year in years:
+for year in [year1, year2]:
     file_dvhh = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
     file_dvper = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
     hhdspend[year] = lcfs_import.import_lcfs(year, file_dvhh, file_dvper).drop_duplicates()
@@ -51,189 +47,10 @@ for year in years:
     hhd_ghg[year]['income anonymised'] = hhd_ghg[year]['income anonymised'] * hhd_ghg[year]['weight'] /  hhd_ghg[year]['pop']
     if year >= 2006 and year <= 2009:
         hhd_ghg[year]['income anonymised'] = hhd_ghg[year]['income anonymised'] / inflation_070809[year-2007]
-    #hhd_ghg[year]['new_desc'] = 'All'
-    
-    pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x * hhd_ghg[year]['weight'] / hhd_ghg[year]['pop'])
-    people[year] = hhd_ghg[year][hhd_ghg[year].loc[:,:'new_desc'].columns.tolist() + ['pop']]
 
-var = 'composition of household'
-code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == var]
-code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
-    
-# calulate means
-products = cat_lookup[['Category']].drop_duplicates()['Category'].tolist() + ['Total']
-col_list = [x + '_ghg' for x in products] + [x + '_exp' for x in products] + ['income anonymised']
-
-year = 2007
-temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
-temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
-temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)\
-        .join(people[year][['income anonymised', 'pop', var]])\
-            .join(hhdspend[year][products], lsuffix='_ghg', rsuffix='_exp')
-temp[var] = temp[var].map(code_dict)
-temp[col_list] = temp[col_list].apply(lambda x: x * temp['pop'])
-temp = temp.groupby([var]).sum()
-temp[col_list] = temp[col_list].apply(lambda x: x / temp['pop'])
-
-data_07 = cp.copy(temp)
-
-
-year = 2009
-temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
-temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
-temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)\
-        .join(people[year][['income anonymised', 'pop', var]])\
-            .join(hhdspend[year][products], lsuffix='_ghg', rsuffix='_exp')
-temp[var] = temp[var].map(code_dict)
-temp[col_list] = temp[col_list].apply(lambda x: x * temp['pop'])
-temp = temp.groupby([var]).sum()
-temp[col_list] = temp[col_list].apply(lambda x: x / temp['pop'])
-
-data_09 = cp.copy(temp)
-
-# calculate elasticities
-hhd_comp = data_09.index.tolist()
-
-results = pd.DataFrame(columns=['hhd_comp', 'inc_elasticity', 'product', 
-                                'income_diff', 'income_mean', 'ghg_diff', 'ghg_mean',
-                                'income_fraction', 'ghg_fraction'])
-for p in products:
-    prod = p +'_ghg'
-    for hhd in hhd_comp:
-        ghg_diff = data_09.loc[hhd, prod] - data_07.loc[hhd, prod]
-        ghg_mean = (data_09.loc[hhd, prod] + data_07.loc[hhd, prod]) / 2
-        inc_diff = data_09.loc[hhd, 'income anonymised'] - data_07.loc[hhd, 'income anonymised']
-        inc_mean = (data_09.loc[hhd, 'income anonymised'] + data_07.loc[hhd, 'income anonymised']) / 2
-        
-        temp = pd.DataFrame(columns=['hhd_comp', 'inc_elasticity', 'product'], index=[0])
-        temp['hhd_comp'] = hhd
-        temp['product'] = p
-        temp['income_diff'] = inc_diff
-        temp['income_mean'] = inc_mean
-        temp['ghg_diff'] = ghg_diff
-        temp['ghg_mean'] = ghg_mean
-        
-        temp['income_fraction'] = temp['income_diff'] / temp['income_mean']
-        temp['ghg_fraction'] = temp['ghg_diff'] / temp['ghg_mean']
-        
-        temp['inc_elasticity'] = (ghg_diff / ghg_mean) / (inc_diff / inc_mean)
-
-        results = results.append(temp)
-        
-results_exp = pd.DataFrame(columns=['hhd_comp', 'exp_elasticity', 'product'])
-
-for p in products:
-    prod = p +'_ghg'
-    exp = p +'_exp'
-    for hhd in hhd_comp:
-        ghg_diff = data_09.loc[hhd, prod] - data_07.loc[hhd, prod]
-        exp_diff = data_09.loc[hhd, exp] - data_07.loc[hhd, exp]
-
-        ghg_mean = (data_09.loc[hhd, prod] + data_07.loc[hhd, prod]) / 2
-        exp_mean = (data_09.loc[hhd, exp] + data_07.loc[hhd, exp]) / 2
-        
-        
-        temp = pd.DataFrame(columns=['hhd_comp', 'exp_elasticity', 'product'], index=[0])
-        temp['hhd_comp'] = hhd
-        temp['product'] = p
-        
-        temp['exp_elasticity'] = (ghg_diff / ghg_mean) / (exp_diff / exp_mean)
-        results_exp = results_exp.append(temp)
-              
-all_results = results.set_index(['hhd_comp', 'product'])[['inc_elasticity']]\
-    .join(results_exp.set_index(['hhd_comp', 'product'])[['exp_elasticity']])\
-        .reset_index()
-
-
-fig, ax = plt.subplots(figsize=(7.5,5))
-ax.axhline(0, linestyle='--', c='black', lw=0.5)
-sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] != 'Total'], style='product', y='inc_elasticity', 
-                x='hhd_comp', color='k', s=100)
-sns.set_palette(sns.color_palette(['#C54A43'])) # '#78AAC8'
-sns.scatterplot(ax=ax, data=all_results.loc[all_results['product'] == 'Total'], y='inc_elasticity', hue='product', x='hhd_comp', s=100)
-ax.tick_params(axis='x', labelrotation=90)
-ax.set_xlabel('')
-ax.set_ylabel('Income elasticity')
-ax.set_ylim(-32.5, 17.5)
-sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1, 0.8), title='Product')
-plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots.png', bbox_inches='tight')
-
-
-
-
-
-# calculate without household comp
-year1 = 2007
-year2 = 2009
-
-cols = hhd_ghg[year1].loc[:,'1.1.1.1':'12.5.3.5'].columns.tolist() + ['income anonymised']
-
-temp = hhd_ghg[year1][cols + [pop_type]]
-temp['year'] = 'ghg_' + str(year1)
-
-temp2 = hhd_ghg[year2][cols + [pop_type]]
-temp2['year'] = 'ghg_' + str(year2)
-
-temp = temp.append(temp2)
-temp['Total'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
-temp = temp.rename(columns=cat_dict).sum(axis=1, level=0)
-
-cols = ['Food and Drinks', 'Other consumption', 'Recreation, culture, and clothing', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels',
-        'Private and public road transport', 'Air transport', 'Total', 'income anonymised']
-
-temp[cols] = temp[cols].apply(lambda x: x*temp[pop_type])
-temp = temp.groupby('year').sum()
-temp = temp[cols].apply(lambda x: x/temp[pop_type]).T
-
-income_diff = temp.loc['income anonymised', 'ghg_' + str(year2)] - temp.loc['income anonymised', 'ghg_' + str(year1)]
-income_mean = (temp.loc['income anonymised', 'ghg_' + str(year2)] + temp.loc['income anonymised', 'ghg_' + str(year1)]) / 2
-
-temp['ghg_diff'] = temp['ghg_' + str(year2)] - temp['ghg_' + str(year1)]
-temp['ghg_mean'] = (temp['ghg_' + str(year2)] + temp['ghg_' + str(year1)]) / 2
-
-temp['inc_elasticity'] = (temp['ghg_diff'] / temp['ghg_mean']) / (income_diff / income_mean)
-temp['hhd_comp'] = 'All households'
-
-product_dict = {'Recreation, culture, and clothing':'Recreation,\nculture, and\nclothing',
-                'Housing, water and waste':'Housing, water\nand waste',
-                'Electricity, gas, liquid and solid fuels':'Electricity, gas,\nliquid and solid\nfuels',
-                'Private and public road transport':'Private and public\nroad transport',
-                'Food and Drinks':'Food and Drinks',
-                'Other consumption':'Other\nconsumption',
-                'Air transport':'Air transport'}
-
-w=5; h=4
-
-fig, ax = plt.subplots(figsize=(w, h))
-ax.axhline(0, linestyle='--', c='black', lw=0.5)
-plot_data = all_results.loc[all_results['product'] != 'Total'].sort_values('product')
-plot_data['product'] = plot_data['product'].map(product_dict)
-sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity', style='hhd_comp', color='k', s=100)
-sns.set_palette(sns.color_palette(['#C54A43'])) # '#78AAC8'
-plot_data = temp.iloc[:-2,:].reset_index().rename(columns={'index':'product'}).sort_values('product')
-plot_data['product'] = plot_data['product'].map(product_dict)
-sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity',  hue='hhd_comp', s=100)
-ax.tick_params(axis='x', labelrotation=90)
-ax.set_xlabel('')
-ax.set_ylabel('Income elasticity')
-ax.set_ylim(-85, 20)
-sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1, 0.8), title='Household Composition')
-plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots_reversed.png', bbox_inches='tight', dpi=200)
-
-fig, ax = plt.subplots(figsize=(w, h))
-ax.axhline(0, linestyle='--', c='black', lw=0.5)
-plot_data = all_results.loc[all_results['product'] != 'Total'].sort_values('product')
-plot_data['product'] = plot_data['product'].map(product_dict)
-sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity', style='hhd_comp', color='k', s=100)
-sns.set_palette(sns.color_palette(['#C54A43'])) # '#78AAC8'
-plot_data = temp.iloc[:-2,:].reset_index().rename(columns={'index':'product'}).sort_values('product')
-plot_data['product'] = plot_data['product'].map(product_dict)
-sns.scatterplot(ax=ax, data=plot_data, x='product', y='inc_elasticity',  hue='hhd_comp', s=100)
-ax.tick_params(axis='x', labelrotation=90)
-ax.set_xlabel('')
-ax.set_ylabel('Income elasticity')
-ax.set_ylim(-10, 10)
-sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1, 0.8), title='Household Composition')
-plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots_reversed_detail.png', bbox_inches='tight', dpi=200)
-
-
+count = {}
+for var in ['composition of household', 'income_group', 'age_range']:
+    # GET DATA FOR 07 & 09
+    data, count[var] = cef.get_data(var, year1, year2, cat_lookup, fam_code_lookup, hhd_ghg, pop_type)
+    # CALCULATE ELASTICITIES
+    all_results = cef.calc_elasticities(var, data, year1, year2, cat_lookup, hhd_ghg, pop_type, wd)
