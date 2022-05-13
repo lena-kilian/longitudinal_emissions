@@ -261,13 +261,18 @@ def make_footprint(hhdspend, wd):
 
     COICOP_ghg = makefoot(ukmrio['S'], ukmrio['U'], newY, ukmrio['ghg'], list(hhdspend.keys()))
 
-    Total_ghg = {}
+    Total_ghg = {}; multipliers = {}
     for year in list(hhdspend.keys()):
         COICOP_ghg[year][160] += ukmrio['uk_ghg_direct'][year][1]
         COICOP_ghg[year][101] += ukmrio['uk_ghg_direct'][year][0]
+        
+        # multipliers tCO2e/GBP 
+        multipliers[year] = df(COICOP_ghg[year], columns=['total_ghg'], index=hhdspend[year].columns)
+        multipliers[year]['total_spend'] = hhdspend[year].sum(0)
+        multipliers[year]['multipliers'] = multipliers[year]['total_ghg'] / multipliers[year]['total_spend']
     
         # this gives GHG emissions for the groups, break down to per capita emissions
         temp = np.dot(ylcf_props[year], np.diag(COICOP_ghg[year]))
         Total_ghg[year] = df(temp, index=hhdspend[year].index, columns=hhdspend[year].columns)
     
-    return(Total_ghg)
+    return(Total_ghg, multipliers)

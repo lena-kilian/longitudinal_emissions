@@ -21,7 +21,7 @@ import pysal as ps
 # GET DATA FOR 07 & 09 #
 ########################
 
-def get_data(var, year1, year2, cat_lookup, fam_code_lookup, hhd_ghg, pop_type):
+def get_data(var, year1, year2, cat_lookup, fam_code_lookup, hhd_ghg, pop_type, k):
     
     pc_ghg = {}; people={}
     for year in [year1, year2]:
@@ -29,7 +29,7 @@ def get_data(var, year1, year2, cat_lookup, fam_code_lookup, hhd_ghg, pop_type):
         people[year] = hhd_ghg[year][hhd_ghg[year].loc[:,:'new_desc'].columns.tolist() + ['pop']]
     
         people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop_type]
-        q = ps.Quantiles(people[year]['pc_income'], k=10)
+        q = ps.Quantiles(people[year]['pc_income'], k=k)
         people[year]['income_group'] = people[year]['pc_income'].map(q)
     
         people[year]['age_range'] = '18-29'

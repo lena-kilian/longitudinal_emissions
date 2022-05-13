@@ -10,6 +10,7 @@ Aggregating expenditure groups for LCFS by OAC x Region Profiles & UK Supergroup
 
 import pandas as pd
 import estimate_emissions_main_function_2021 as estimate_emissions
+import copy as cp
 
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
@@ -18,6 +19,9 @@ hhd_comp_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp_lookup.x
 hhd_comp_dict = dict(zip(hhd_comp_lookup['Code'], hhd_comp_lookup['New Description']))
 
 new_desc_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp3_lookup.xlsx', sheet_name='final')
+age_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/age_lookup.xlsx').drop_duplicates()
+fam_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_type_lookup.xlsx')
+fam_code_lookup['Category_desc'] = [x.replace('  ', '') for x in fam_code_lookup['Category_desc']]
 
 years = list(range(2001, 2019))
 
@@ -92,11 +96,38 @@ for year in years:
     people[year].loc[(people[year]['new_desc'] == '3+ adults (18-44)') & 
                      (people[year]['age of oldest person in household - anonymised'] < 30), 'composition of household'] = 203
     
+    # OECD household equivalent scales
+    # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
+    temp = cp.copy(people[year])
+    temp['<16'] =  temp['people aged <18'] - temp['people aged 16-17']
+    temp['16+'] = temp['no people'] - temp['<16']
+    temp['hhld_oecd_mod'] = 0
+    temp.loc[temp['16+'] > 0, 'hhld_oecd_mod'] = 1
+    temp['hhld_oecd_equ'] = temp['hhld_oecd_mod']
+    # OECD-modified scale
+    temp['hhld_oecd_mod'] = temp['hhld_oecd_mod'] + ((temp['16+'] - 1) * 0.5) + (temp['<16'] * 0.3)
+    people[year] = people[year].merge(temp[['hhld_oecd_mod', 'case']], on='case')
+    # OECD equivalence scale
+    temp['hhld_oecd_equ'] = temp['hhld_oecd_equ'] + ((temp['16+'] - 1) * 0.7) + (temp['<16'] * 0.5)
+    people[year] = people[year].merge(temp[['hhld_oecd_equ', 'case']], on='case')
+    
+    keep = ['age of oldest person in household - anonymised', 'age of household reference person by range - anonymised',  
+            'people aged <18', 'people aged 18-44', 'people aged 45-59', 'people aged 60-64', 'people aged 65-69', 'people aged >69']
+    temp = people[year].reset_index()[keep + ['case']]
+    code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == 'age of household reference person by range - anonymised']
+    code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
+    temp['age of household reference person by range - anonymised'] = temp['age of household reference person by range - anonymised'].map(code_dict)
+    
+    temp = temp.merge(age_code_lookup, on=keep, how='left').reset_index().drop_duplicates().rename(columns={'Code':'hhd_age_group'}).set_index('case')
+    
+    people[year] = people[year].reset_index().set_index('case').join(temp[['hhd_age_group']]).reset_index()
+    
     # gather spend
     lcfs[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].astype(float).apply(lambda x: x*lcfs[year]['weight'])
     
-hhd_ghg = estimate_emissions.make_footprint(lcfs, wd)
+hhd_ghg, multipliers = estimate_emissions.make_footprint(lcfs, wd)
 
+# household composition
 hhd_comp_list = pd.DataFrame(columns=['new_desc'])
 for year in years:
     temp = people[year][['new_desc']]
@@ -105,12 +136,22 @@ hhd_comp_list = hhd_comp_list.reset_index().groupby('new_desc').count().rename(c
 
 new_desc_lookup = new_desc_lookup.merge(hhd_comp_list, on='new_desc')
  
-
+# save emissions using their own year multipliers
 for year in years:
     hhd_ghg[year] = people[year].set_index('case').join(hhd_ghg[year])
     hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year]['weight'])
     name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv'
     hhd_ghg[year].reset_index().to_csv(name)
     print(str(year) + ' saved')
+    
+# save emissions using 2007 multipliers
+for year in [2007, 2008, 2009]:
+    temp = lcfs[year].T.join(multipliers[2007][['multipliers']])
+    temp = temp.apply(lambda x: x*temp['multipliers']).drop(['multipliers'], axis=1).T.reset_index().rename(columns={'index':'case'})
+    temp = people[year].merge(temp, on='case')
+    temp.loc[:,'1.1.1.1':'12.5.3.5'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/temp['weight'])
+    name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '.csv'
+    temp.to_csv(name)
+    print(str(year) + ' with 2007 multipliers saved')
 
     
