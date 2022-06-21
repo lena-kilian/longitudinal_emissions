@@ -29,6 +29,7 @@ wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
 cat_lookup['ccp_code'] = [x.split(' ')[0] for x in cat_lookup['ccp']]
 cat_dict = dict(zip(cat_lookup['ccp_code'], cat_lookup['Category']))
+cat_dict['pc_income'] = 'pc_income'
 
 fam_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_type_lookup.xlsx')
 fam_code_lookup['Category_desc'] = [x.replace('  ', '') for x in fam_code_lookup['Category_desc']]
@@ -135,15 +136,15 @@ plt.show()
 # Boxplots 2007-2009 #
 ######################
 
-hhd_name = ['income_group', 'composition of household', 'age_group', 'student_hhld']
+hhd_name = ['income_group', 'composition of household', 'age_group']
 
 data = pd.DataFrame(columns=['case', 'family_code', 'var', 'year', 'CCP1', 'ghg'])    
  
 for item in hhd_name:
-     for year in [2007, 2008, 2009]:#years:
-         temp2 = people[year][[item, pop]].rename(columns={item:'family_code'})
-         temp = pc_ghg_2007m[year].join(temp2).set_index(['family_code', pop], append=True).loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
-         
+     for year in [2007, 2008, 2009]:
+         temp2 = people[year][[item, pop, 'pc_income']].rename(columns={item:'family_code'})
+         temp = pc_ghg_2007m[year].loc[:,'1.1.1.1':'12.5.3.5'].join(temp2)\
+             .set_index(['family_code', pop], append=True).dropna(how='all')
          temp['Total_ghg'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].sum(axis=1)
          temp = temp.rename(columns=cat_dict)
          temp = temp.sum(axis=1, level=0).stack().reset_index().rename(columns={'level_3':'CCP1', 'level_4':'CCP1', 0:'ghg'})
@@ -153,13 +154,15 @@ for item in hhd_name:
          print(year)
      print(item)
    
+data_all = cp.copy(data)
+data = data.loc[data['CCP1']!='pc_income']
      
 for item in hhd_name:
      temp2 = data.loc[(data['var'] == item) & (data['year'] >= 2007) & (data['year'] <= 2009)]
      product_list = data[['CCP1']].drop_duplicates()['CCP1']
      
      for i in range(len(product_list)):
-         product = product_list[i]
+         product = product_list.tolist()[i]
          temp = temp2.loc[(temp2['CCP1'] == product)]
          
          if item == 'income_group':
@@ -172,6 +175,7 @@ for item in hhd_name:
              temp = temp.sort_values('family_code', ascending=True)
          else:
              temp = temp.sort_values('family_code', ascending=True)
+             temp = temp.loc[temp['family_code'] != 'Household with children']
          
          temp = temp.loc[temp['family_code'] != 'Other']
 
@@ -203,8 +207,9 @@ for j in range(len(hhd_name)):
         code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
         temp['family_code'] = temp['family_code'].map(code_dict)
         temp = temp.sort_values('family_code', ascending=True)
-    elif item == 'age_range':
+    elif item == 'age_group':
         temp = temp.sort_values('family_code', ascending=True)
+        temp = temp.loc[temp['family_code'] != 'Household with children']
         
     temp = temp.loc[temp['family_code'] != 'Other']
     
@@ -218,3 +223,25 @@ plt.xlim(0, 60)
 plt.subplots_adjust(hspace=0.075)
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/ALL_TOTAL.png', bbox_inches='tight', dpi=200)
 plt.show()
+
+
+# make summary 
+summary = data_all.loc[(data_all['year'] != 2008) & (data_all['var'] != 'student_hhld')]
+summary.index = list(range(len(summary)))
+
+# replace numeric categories
+code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == 'composition of household']
+code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
+summary.loc[summary['var'] == 'composition of household', 'family_code'] = summary['family_code'].map(code_dict)
+summary.loc[summary['var'] == 'income_group', 'family_code'] = 'Decile ' + summary['family_code'].astype(str)
+
+# get means
+summary['ghg'] = summary['ghg'] * summary[pop]
+summary = summary.groupby(['var', 'year', 'CCP1', 'family_code']).sum()
+summary['ghg'] = summary['ghg'] / summary[pop]
+summary = summary[['ghg']].unstack(level='year').droplevel(axis=1, level=0)
+summary[2007] = summary[2007] + 0.000001
+summary[2009] = summary[2009] + 0.000001
+summary['percentage'] = (summary[2009] - summary[2007]) / summary[2007] * 100
+summary = summary.drop(2009, axis=1).unstack(level='CCP1').reset_index()
+

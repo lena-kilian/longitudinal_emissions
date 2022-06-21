@@ -146,7 +146,7 @@ for year in years:
     
 # save emissions using 2007 multipliers
 for year in [2007, 2008, 2009]:
-    temp = lcfs[year].T.join(multipliers[2007][['multipliers']])
+    temp = lcfs[year].T.join(multipliers[year][['multipliers']])
     temp = temp.apply(lambda x: x*temp['multipliers']).drop(['multipliers'], axis=1).T.reset_index().rename(columns={'index':'case'})
     temp = people[year].merge(temp, on='case')
     temp.loc[:,'1.1.1.1':'12.5.3.5'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/temp['weight'])

@@ -20,7 +20,7 @@ data %>%
 
 results <- data.frame()
 product_list <- distinct(select(data, Product))$Product
-for (item in c('income_group', 'composition of household', 'age_group', 'student_hhld')){
+for (item in c('income_group', 'composition of household', 'age_range')){
   for (pt in product_list){
     for (yr in c(2007, 2009)){
       temp <- data
@@ -41,7 +41,7 @@ for (item in c('income_group', 'composition of household', 'age_group', 'student
 
 results %>% write_csv('data/processed/GHG_Estimates_LCFS/Elasticity_regression_results.csv')
 
-for (item in c('income_group', 'composition of household', 'age_group', 'student_hhld')){
+for (item in c('income_group', 'composition of household', 'age_group')){
   results %>% 
     mutate(year_str = paste('Year', year, sep=' ')) %>% 
     filter(group_var == item)  %>% 

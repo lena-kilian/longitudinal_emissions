@@ -54,8 +54,14 @@ def get_data(var, year1, year2, cat_lookup, fam_code_lookup, hhd_ghg, pop_type, 
             .join(people[year][['income anonymised', 'pop', var]])
 
         if var == 'income_group':
+            var_list = []
+            for item in temp[var]:
+                if item+1 < 10:
+                    var_list.append('Decile 0' + str(item + 1))
+                else:
+                    var_list.append('Decile ' + str(item + 1))
+            temp[var] = var_list
             temp = temp.sort_values(var)
-            temp[var] = ['Decile ' + str(x+1) for x in temp[var]]
         elif var == 'composition of household':
             code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == var]
             code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
@@ -172,14 +178,9 @@ def calc_elasticities(var, data, year1, year2, cat_lookup, hhd_ghg, pop_type, wd
     ax.set_ylabel('Income elasticity')
     #ax.set_ylim(-85, 20)
     
-    if var == 'income_group':
-        handles, labels = plt.gca().get_legend_handles_labels()
-        order = [10, 0, 2, 3, 4, 5, 6, 7, 8, 9, 1]
-        plt.legend([handles[i] for i in order], [labels[i] for i in order])
-    else:
-        handles, labels = plt.gca().get_legend_handles_labels()
-        order = [len(handles) - 1] + list(range(len(handles) - 1))
-        plt.legend([handles[i] for i in order], [labels[i] for i in order])
+    handles, labels = plt.gca().get_legend_handles_labels()
+    order = [len(handles) - 1] + list(range(len(handles) - 1))
+    plt.legend([handles[i] for i in order], [labels[i] for i in order])
         
     sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1.05, 0.98), title=title_dict[var])
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots_reversed_' + var + '.png', bbox_inches='tight', dpi=200)
@@ -198,14 +199,9 @@ def calc_elasticities(var, data, year1, year2, cat_lookup, hhd_ghg, pop_type, wd
     ax.set_ylabel('Income elasticity')
     ax.set_ylim(-10, 10)
     
-    if var == 'income_group':
-        handles, labels = plt.gca().get_legend_handles_labels()
-        order = [10, 0, 2, 3, 4, 5, 6, 7, 8, 9, 1]
-        plt.legend([handles[i] for i in order], [labels[i] for i in order])
-    else:
-        handles, labels = plt.gca().get_legend_handles_labels()
-        order = [len(handles) - 1] + list(range(len(handles) - 1))
-        plt.legend([handles[i] for i in order], [labels[i] for i in order])
+    handles, labels = plt.gca().get_legend_handles_labels()
+    order = [len(handles) - 1] + list(range(len(handles) - 1))
+    plt.legend([handles[i] for i in order], [labels[i] for i in order])
     
     sns.move_legend(ax,loc='upper left', bbox_to_anchor=(1.05, 0.98), title=title_dict[var])
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Income_Elasticity_plots_reversed_detail_' + var + '.png', bbox_inches='tight', dpi=200)

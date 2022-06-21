@@ -8,11 +8,16 @@ Aggregating expenditure groups for LCFS by OAC x Region Profiles & UK Supergroup
 @author: lenakilian
 """
 
+
+###### TO DO
+# Base cpi on 2007 data, the use 2007 multipliers for 2008 and 2009 data .
+# Rerun entire analysis with corrected data
+
+
 import pandas as pd
 import LCFS_import_data_function as lcfs_import
 import copy as cp
 import pickle
-
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -22,6 +27,18 @@ lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005',
 
 # load LFC data
 hhdspend = {}
+
+"""
+# adjust to CPI
+cpi_lookup = pd.read_excel(wd + 'data/processed/CPI_lookup.xlsx', sheet_name='Sheet4')
+cpi_lookup['ccp_lcfs'] = [x.split(' ')[0] for x in cpi_lookup['ccp_lcfs']]
+cpi = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0).loc[[str(x) for x in years]].T.dropna(how='all')
+cpi['Type'] = [x.split(' ')[0] + ' ' + x.split(' ')[1] for x in cpi.index.tolist()]
+cpi = cpi.loc[cpi['Type'].isin(['CPI INDEX']) == True]
+cpi['Reference_year'] = [x[-8:] for x in cpi.index.tolist()]
+cpi = cpi.loc[cpi['Reference_year'].str.contains('=100') == True]
+cpi['Product'] = [x.replace('CPI INDEX ', '').split(' ')[0] for x in cpi.index.tolist()]
+"""
 
 # LCFS with physical units 
 flights = pd.read_excel(wd + 'data/processed/LCFS/Controls/flights_2001-2018.xlsx', sheet_name=None, index_col = 'case')
@@ -39,6 +56,18 @@ for year in years:
     hhdspend[year].columns = [x.lower() for x in hhdspend[year].columns]
     hhdspend[year] = hhdspend[year].set_index('case')
     
+    """
+    # adjust expenditure by CPI
+    if year <= 2014:
+        cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP3_index']))
+    else:
+        cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP4_index']))
+    
+    for item in hhdspend[year].loc[:,'1.1.1.1':'12.5.3.5'].columns:
+        hhdspend[year][item] = hhdspend[year][item] * (float(cpi.loc[cpi_dict[item], str(year)]) / 100)
+    """
+        
+    # save order of coicop cats    
     order = hhdspend[year].columns.tolist()
     
     # adjust to physical units
