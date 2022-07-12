@@ -227,6 +227,13 @@ plt.show()
 
 # make summary 
 summary = data_all.loc[(data_all['year'] != 2008) & (data_all['var'] != 'student_hhld')]
+
+# add all households
+temp = summary.loc[summary['var'] == 'composition of household']
+temp['var'] = 'All households'
+temp['family_code'] = 'All households'
+
+summary = summary.append(temp)
 summary.index = list(range(len(summary)))
 
 # replace numeric categories

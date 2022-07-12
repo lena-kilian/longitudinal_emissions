@@ -27,11 +27,15 @@ for (item in c('income_group', 'composition of household', 'age_range')){
       temp['group'] <- temp[item]
       group_list <- distinct(select(temp, group))$group
       temp2 <- temp %>% filter(Product == pt & year == yr)
-      temp3 <- data.frame(group_var = item, group = 'All households', product = pt, year = yr, elasticity = lm(ln_ghg ~ ln_income, data = temp2)$coefficients['ln_income'])
+      mod <- lm(ln_ghg ~ ln_income, data = temp2)
+      temp3 <- data.frame(group_var = item, group = 'All households', product = pt, year = yr, 
+                          elasticity = mod$coefficients['ln_income'], ci_low = confint(mod)[2], ci_up = confint(mod)[4])
       results <- results %>% rbind(temp3)
       for (gp in group_list){
         temp2 <- temp %>% filter(Product == pt & year == yr & group == gp)
-        temp3 <- data.frame(group_var = item, group = gp, product = pt, year = yr, elasticity = lm(ln_ghg ~ ln_income, data = temp2)$coefficients['ln_income'])
+        mod <- lm(ln_ghg ~ ln_income, data = temp2)
+        temp3 <- data.frame(group_var = item, group = gp, product = pt, year = yr, 
+                            elasticity = mod$coefficients['ln_income'], ci_low = confint(mod)[2], ci_up = confint(mod)[4])
         results <- results %>% rbind(temp3)
       }
     }

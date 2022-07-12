@@ -31,6 +31,13 @@ product_dict = {'Recreation, culture, and clothing':'Recreation,\nculture, and\n
                 'Air transport':'Air transport',
                 'Total':'Total'}
 
+results_og = cp.copy(results)
+
+
+"""
+# shorten so code works
+results = results.drop(['ci_low', 'ci_up'], axis=1)
+
 
 all_results = pd.DataFrame(columns=['year'])
 for item in ['income_group', 'composition of household', 'age_range']:
@@ -114,10 +121,21 @@ ax.set_xticklabels(xlabs)
 # save figure
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/elasticities_regression_all_households.png', bbox_inches='tight', dpi=200)
 plt.show()
-    
+"""
+
+# make plot for all households with error bars
+data = cp.copy(results_og)
+data = data.loc[data['group'] == 'All households'].drop('group_var', axis=1).drop_duplicates()
+data['product_2'] = data['product'] + ' ' + data['year_str']
+data = data.sort_values('product_2')
+data['ci_low'] = data['elasticity'] - data['ci_low']
+data['ci_up'] = data['ci_up'] - data['elasticity']
 
 fig, ax = plt.subplots(figsize=(7.5, 5))
 # Add household groups
+plt.errorbar(x=data['elasticity'], y=data['product_2'],
+             xerr=np.array([data['ci_low'], data['ci_up']]),
+             capsize=3, ls='none', color='k', linewidth=0.5)
 sns.scatterplot(ax=ax, data=data, y='product_2', x='elasticity', hue='year_str', s=70, 
                 palette='RdBu', edgecolor='black', linewidth=0.2)
 # Add other details

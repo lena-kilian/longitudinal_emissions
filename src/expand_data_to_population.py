@@ -124,30 +124,67 @@ for i in range(len(hhd_name)):
         temp = temp.loc[temp[item] != 'Household with children']
         ylab = 'Age Range\n(Adult Households Only)'
     
+    # repeat for all households
+    if item == 'composition of household':
+        temp2 = cp.copy(temp)
+        temp2[item] = 'All households'
+        temp = temp.append(temp2)
+    
     temp = temp.groupby(['year', item])[products + ['Total_ghg', 'pc_income']].describe().stack(level=0).reset_index()
     temp['se'] = temp['std'] / np.sqrt(temp['count'])
-    all_describe = all_describe.append(temp)
     
+    
+    # save as df
+    temp2 = cp.copy(temp).rename(columns={item:'family_code'})
+    temp2['var'] = item
+    all_describe = all_describe.append(temp2)
+    
+    # sort for plot and remove all households
+    temp = temp.loc[temp[item] != 'All households']
     if item == 'composition of household':
-        temp = temp.sort_values(['mean', 'year'], ascending=True)
+        temp = temp.sort_values(['50%', 'year'], ascending=True)
     
     temp = temp.loc[(temp[item] != 'Other') & (temp['level_2'] == 'Total_ghg')]
     
     h = len(temp[[item]].drop_duplicates())
     
+    # plot
     fig, ax = plt.subplots(figsize=(8, h/2.5))
-    sns.barplot(ax=ax, data=temp, x='mean', y=item, hue='year', palette='RdBu',
+    sns.barplot(ax=ax, data=temp, x='50%', y=item, hue='year', palette='RdBu',
                 edgecolor='black')
-    x_coords = [p.get_width() for p in ax.patches]
-    y_coords = [p.get_y() + 0.5*p.get_height() for p in ax.patches]
-    plt.errorbar(x=x_coords, y=y_coords, xerr=temp['se'], fmt="none", c= "k")
+    # add errorbars
+    #x_coords = [p.get_width() for p in ax.patches]
+    #y_coords = [p.get_y() + 0.5*p.get_height() for p in ax.patches]
+    #plt.errorbar(x=x_coords, y=y_coords, xerr=temp['se'], fmt="none", c= "k")
     
+    # change labens
     plt.ylabel(ylab)
     plt.xlabel('Mean tCO$_{2}$e / capita')
     
+    # save
     plt.legend(bbox_to_anchor=(1, 1))
     plt.xlim(0, 30)
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barchart_mean_' + item + '.png', bbox_inches='tight', dpi=200)
     plt.show()
 
+# clean up
+summary = all_describe[['year', 'var', 'family_code', 'level_2', '50%']]\
+    .drop_duplicates().set_index(['year', 'var', 'family_code', 'level_2'])[['50%']]
+
+summary = summary.unstack(['year']).droplevel(axis=1, level=0)
+summary[2007] = summary[2007] + 0.000001
+summary[2009] = summary[2009] + 0.000001
+summary['percentage'] = (summary[2009] - summary[2007]) / summary[2007] * 100
+summary = summary.unstack(['level_2'])
+ 
+
+"""   
+products = summary.columns.level[2]
+for item in :
     
+summary[2007] = summary[2007] + 0.000001
+summary[2009] = summary[2009] + 0.000001
+summary['percentage'] = (summary[2009] - summary[2007]) / summary[2007] * 100
+summary = summary.drop(2009, axis=1).unstack(level='CCP1').reset_index() 
+
+"""
