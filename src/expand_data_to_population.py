@@ -3,7 +3,7 @@
 """
 Created on Tue Jan 18 2021
 
-Aggregating expenditure groups for LCFS by OAC x Region Profiles & UK Supergroups
+calculating elasticities -- using 2007 mutipliers and expenditure adjusted to 2007 cpi
 
 @author: lenakilian
 """
@@ -41,44 +41,36 @@ years = list(range(2001, 2019))
 lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
                              '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019']))
 
-inflation_070809 = [1, 1.04, 1.03]
+inflation_070809 = [1, 1.04, 1.03] #inflation_06070809 =[0.9 6, 1, 1.04, 1.03]
 # import data
-hhd_ghg = {}; pc_ghg = {}; people = {}; hhd_ghg_2007m = {}; pc_ghg_2007m= {}
+hhd_ghg = {}; pc_ghg = {}; people = {};
 for year in years:
     file_dvhh = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
     file_dvper = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
     income = lcfs_import.import_lcfs(year, file_dvhh, file_dvper).drop_duplicates()
     income.columns = [x.lower() for x in income.columns]
-    if year >= 2007 and year <= 2009:
-        income['income anonymised'] = income['income anonymised'] / inflation_070809[year-2007]
     income = income[['income anonymised']].rename(columns={'income anonymised':'hhld_income'})
     
-    
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index(['case'])
+    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv')\
+        .set_index(['case'])
     pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year][pop])
     people[year] = hhd_ghg[year].loc[:,:'1.1.1.1'].iloc[:,:-1].join(income[['hhld_income']])
     people[year]['pc_income'] = people[year]['hhld_income'] / people[year][pop]
     people[year]['population'] = people[year][pop] * people[year]['weight']
-    
-    if year in [2007, 2008, 2009]:
-        hhd_ghg_2007m[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '.csv')\
-            .set_index('case')
-        pc_ghg_2007m[year] = hhd_ghg_2007m[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg_2007m[year][pop])
-    
+
     q = ps.Quantiles(people[year]['pc_income'], k=10)
     people[year]['income_group'] = people[year]['pc_income'].map(q)
     
     # import age range and student status
-    if year in [2007, 2008, 2009]:
-        temp = pd.read_csv(wd + 'data/processed/LCFS/Socio-demographic/person_variables_' + str(year) + '.csv').set_index('case')
-        people[year] = people[year].join(temp[['age_group', 'student_hhld']])
-        #people[year]['age_group'] = people[year]['age_group'] + ' ' + people[year]['student_hhld'] 
+    temp = pd.read_csv(wd + 'data/processed/LCFS/Socio-demographic/person_variables_' + str(year) + '.csv').set_index('case')
+    people[year] = people[year].join(temp[['age_group', 'student_hhld']])
+    #people[year]['age_group'] = people[year]['age_group'] + ' ' + people[year]['student_hhld'] 
 
 all_ghg = pd.DataFrame(columns=['year'])
 keep = ['weight', pop, 'no people', 'composition of household', 'population', 'income_group', 'age_group', 
         'student_hhld', 'pc_income']
 for year in [2007, 2009]:
-    temp = pc_ghg_2007m[year].loc[:,'1.1.1.1':'12.5.3.5'].rename(columns=cat_dict).sum(axis=1, level=0)
+    temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].rename(columns=cat_dict).sum(axis=1, level=0)
     temp['Total_ghg'] = temp.sum(axis=1)
     temp = people[year][keep].join(temp).reset_index()
     temp['year'] = year

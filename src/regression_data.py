@@ -39,7 +39,7 @@ years = [2007, 2009]
 
 lcf_years = dict(zip(years, ['2007', '2009']))
 
-inflation_070809 = [1, 1.04, 1.03]
+inflation_070809 = [1, 1.04, 1.03] #inflation_06070809 =[0.9 6, 1, 1.04, 1.03]
 # import data
 hhd_ghg = {}; pc_ghg = {}; people = {}; hhd_ghg_2007m = {}; pc_ghg_2007m= {}
 for year in years:
@@ -77,16 +77,19 @@ for year in years:
     
     # sex
     sex = temp[['case', 'a004', 'a005p']]
-    temp2 = sex.loc[sex['a005p'] >= 18].groupby(['case', 'a004']).count().unstack(level='a004').fillna(0).droplevel(axis=1, level=0)
-    temp2['fraction_female_adults'] = temp2[2] / temp2.sum(1)
-    sex = sex.set_index('case').join(temp2[['fraction_female_adults']])
-    temp2 = sex.groupby(['case', 'a004'])[['a005p']].count().unstack(level='a004').fillna(0).droplevel(axis=1, level=0)
-    temp2['fraction_female'] = temp2[2] / temp2.sum(1)
-    sex = sex[['fraction_female_adults']].join(temp2[['fraction_female']]).mean(axis=0, level=0)
+    temp2 = sex.loc[sex['a005p'] >= 18].groupby(['case', 'a004']).count().unstack(level='a004').fillna(0)\
+        .droplevel(axis=1, level=0).rename(columns={1:'No_adult_male', 2:'No_adult_female'})
+    temp2['fraction_female_adults'] = temp2['No_adult_female'] / temp2.sum(1)
+    sex = sex.set_index('case').join(temp2)
+    temp2 = sex.groupby(['case', 'a004'])[['a005p']].count().unstack(level='a004').fillna(0)\
+        .droplevel(axis=1, level=0).rename(columns={1:'No_male', 2:'No_female'})
+    temp2['fraction_female'] = temp2['No_female'] / temp2.sum(1)
+    sex = sex.join(temp2).mean(axis=0, level=0).drop(['a004', 'a005p'], axis=1)
 
     
     # emission data
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index(['case'])
+    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv')\
+        .set_index(['case'])
     pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year][pop])
     people[year] = hhd_ghg[year].loc[:,:'1.1.1.1'].iloc[:,:-1]\
         .join(income[['hhld_income']])\
@@ -112,7 +115,8 @@ for year in years:
 
 all_ghg = pd.DataFrame(columns=['year'])
 keep = ['weight', pop, 'no people', 'population', 'oac_supergroup', 'gor modified', 
-        'composition of household', 'age_group', 'fraction_female_adults', 'fraction_female',
+        'composition of household', 'age_group', 
+        'fraction_female_adults', 'fraction_female', 'No_adult_male', 'No_adult_female', 'No_male', 'No_female',
         'mean_age_adults', 'mean_age',
         'student_hhld', 'pc_income', 'partner_hhld', 'relative_hhld',
         'people aged <2', 'people aged 2-4', 'people aged 5-15', 'people aged 16-17',

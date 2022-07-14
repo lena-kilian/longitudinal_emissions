@@ -1,4 +1,4 @@
-# regression analysis to investigae impact of gender
+# regression analysis to investigate impact of gender
 
 rm(list=ls())
 
@@ -19,15 +19,16 @@ dv_list <-  c('Food_and_Drinks','Other_consumption', 'Recreation_culture_and_clo
               'Housing_water_and_waste', 'Electricity_gas_liquid_and_solid_fuels',
               'Private_and_public_road_transport', 'Air_transport', 'Total_ghg')
 
-for (dv in dv_list){
-  data[dv] <- data[dv] *10}
+#for (dv in dv_list){
+#  data[dv] <- data[dv] *10}
 
 # make lists with variables
 main_controls <- c('oac_1', 'oac_2', 'oac_3', 'oac_4', 'oac_5', 'oac_6', # 'oac_7',
                    'gor_1', 'gor_2', 'gor_3', 'gor_4', 'gor_5', 'gor_6', 'gor_7', 'gor_8', 
                    'gor_9', 'gor_10', 'gor_11', #'gor_12'
-                   'hhld_income', 'year_before', 'hhld_oecd_equ', 'relative_hhld',
-                   'fraction_female_adults', 'mean_age_adults')
+                   'hhld_income', 'year_before', 'relative_hhld', # 'hhld_oecd_equ',
+                   #'fraction_female_adults', 'mean_age_adults'
+                   'No_adult_male', 'No_adult_female')
 no_people <- c('people_aged_m2', 'people_aged_2_4', 'people_aged_5_15', 'people_aged_16_17', 'people_aged_18_44', 
                'people_aged_45_59', 'people_aged_60_64', 'people_aged_65_69', 'people_aged_p69')
 hhld_comp <- c('coh_1adult', 'coh_2adultswithchildren', 'coh_2padult18_30', 'coh_2adults', 'coh_1adultwithchildren',
@@ -48,17 +49,17 @@ make_formula <- function(dv, var_list){
   formula
 }
 
-variable <- 'students'
+variable <- 'hhld_age'
 if (variable == 'hhld_age') {
   data_mod <- filter(data, age != 'Other' & age != 'Household with children')
-  var_list <- c('age_18_29', 'age_30_39', 'age_40_49',  'age_50_59',  'age_60_69') # remove last one for dummy
+  var_list <- c('age_18_29', 'age_30_39', 'age_50_59',  'age_60_69', 'age_70p') # remove 40-49 one for dummy
 }
 if (variable != 'hhld_age') {
   data_mod <- data
   var_list <- eval(parse(text = variable))
 }
 
-dv <- 'Air_transport'
+dv <- 'Total_ghg'
 data_mod['dv'] <- data_mod[dv] / data_mod['hhld_oecd_equ']
 max <- mean(data_mod$dv) + (2.5*sd(data_mod$dv))
 min <- mean(data_mod$dv) - (2.5*sd(data_mod$dv))
@@ -84,37 +85,39 @@ par(mfrow = c(2, 2)); plot(mod); par(mfrow = c(1, 1))
 
 
 
+
+
 ## WEIGHTED REGRESSION ##
 # create weights
-data_oph <- data_oph  %>% mutate(id = 1:nrow(data_oph))
+data_w <- data_mod  %>% mutate(id = 1:nrow(data_mod))
 
-residuals <- data.frame(res = mod_oph$residuals, id=data_oph$id) %>% 
+residuals <- data.frame(res = mod$residuals, id=data_w$id) %>% 
   arrange(res) %>%
-  mutate(group = rep(1:(nrow(data_oph)/10), each = 10)[1:nrow(data_oph)])
+  mutate(group = rep(1:(nrow(data_w)/10), each = 10)[1:nrow(data_w)])
 
-weights <- data.frame(weight = c(0), group = c(0))
-for (i in 1:(nrow(data_oph)/10)){
+weights <- data.frame(mod_weight = c(0), group = c(0))
+for (i in 1:(nrow(data_w)/10)){
   temp <- residuals %>% filter(group == i) %>% dplyr::select(res) %>% var()
-  weights <- rbind(weights, data.frame(weight = c(temp), group = c(i)))
+  weights <- rbind(weights, data.frame(mod_weight = c(temp), group = c(i)))
   }
 
 weights <- residuals %>% 
   left_join(filter(weights, group!=0), by='group') %>% 
-  dplyr::select(c(id, weight)) %>%
-  mutate(weight = 1 / weight)
+  dplyr::select(c(id, mod_weight)) %>%
+  mutate(mod_weight = 1 / mod_weight)
 
-data_oph <- data_oph %>%
+data_w <- data_w %>%
   left_join(weights, by='id')
 
 # weighted regression
-mod_oph_w <- lm(hhd_ghg ~ gor_modified_1 + gor_modified_2 + gor_modified_3 + gor_modified_4 + gor_modified_5 + gor_modified_6 + gor_modified_7 + 
-                  gor_modified_8 + gor_modified_9 + gor_modified_10 + gor_modified_11 + oac_supergroup_1 + oac_supergroup_2 + oac_supergroup_3 +
-                  oac_supergroup_4 + oac_supergroup_5 + oac_supergroup_6 + oac_supergroup_7 + gender_Female + age + hhld_income,
-                data = data_oph, weights=data_oph$weight)
+mod_w <- mod <- lm(formula, data = data_w, weights=data_w$mod_weight)
 
 # produce summary of model parameters
-summary(mod_oph_w) 
-confint(mod_oph_w)
+summary(mod_w) 
+confint(mod_w)
 
 # view diagnostic plots
-par(mfrow = c(2, 2)); plot(mod_oph_w); par(mfrow = c(1, 1))
+par(mfrow = c(2, 2)); plot(mod_w); par(mfrow = c(1, 1))
+
+residuals_w = data.frame(res = mod_w$residuals)
+ggplot(data=residuals_w, aes(x=res)) + geom_histogram(binwidth=1) 

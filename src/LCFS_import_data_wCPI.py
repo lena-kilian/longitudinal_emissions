@@ -3,7 +3,7 @@
 """
 Created on Tue Jan 18 2021
 
-Import hhld expenditure data and adjust physical units 2001-2018
+Import hhld expenditure data, adjust physical units, adjust CPI, 2007 & 2009
 
 @author: lenakilian
 """
@@ -21,24 +21,28 @@ import pickle
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
-years = list(range(2001, 2019))
-lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
-                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019']))
+years = [2007, 2009]
+lcf_years = dict(zip(years, ['2007', '2009']))
 
 # load LFC data
 hhdspend = {}
 
-"""
+
 # adjust to CPI
+# import cpi cat lookup
 cpi_lookup = pd.read_excel(wd + 'data/processed/CPI_lookup.xlsx', sheet_name='Sheet4')
 cpi_lookup['ccp_lcfs'] = [x.split(' ')[0] for x in cpi_lookup['ccp_lcfs']]
-cpi = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0).loc[[str(x) for x in years]].T.dropna(how='all')
+# import cpi data --> uses 2015 as base year, change to 2007
+cpi = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0)\
+    .loc[[str(x) for x in years + [2015]]].T.dropna(how='all').astype(float)
+#check = cp.copy(cpi)
+cpi = cpi.apply(lambda x: x/cpi[str(years[0])] * 100)
 cpi['Type'] = [x.split(' ')[0] + ' ' + x.split(' ')[1] for x in cpi.index.tolist()]
 cpi = cpi.loc[cpi['Type'].isin(['CPI INDEX']) == True]
 cpi['Reference_year'] = [x[-8:] for x in cpi.index.tolist()]
 cpi = cpi.loc[cpi['Reference_year'].str.contains('=100') == True]
 cpi['Product'] = [x.replace('CPI INDEX ', '').split(' ')[0] for x in cpi.index.tolist()]
-"""
+
 
 # LCFS with physical units 
 flights = pd.read_excel(wd + 'data/processed/LCFS/Controls/flights_2001-2018.xlsx', sheet_name=None, index_col = 'case')
@@ -56,7 +60,7 @@ for year in years:
     hhdspend[year].columns = [x.lower() for x in hhdspend[year].columns]
     hhdspend[year] = hhdspend[year].set_index('case')
     
-    """
+
     # adjust expenditure by CPI
     if year <= 2014:
         cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP3_index']))
@@ -65,7 +69,7 @@ for year in years:
     
     for item in hhdspend[year].loc[:,'1.1.1.1':'12.5.3.5'].columns:
         hhdspend[year][item] = hhdspend[year][item] * (float(cpi.loc[cpi_dict[item], str(year)]) / 100)
-    """
+
         
     # save order of coicop cats    
     order = hhdspend[year].columns.tolist()
@@ -85,7 +89,7 @@ for year in years:
     hhdspend[year].index.name = 'case'
     hhdspend[year] = hhdspend[year].reset_index()
     
-    hhdspend[year].to_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '.csv')
+    hhdspend[year].to_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '_wCPI.csv')
     
     print('Year ' + str(year) + ' completed')
 

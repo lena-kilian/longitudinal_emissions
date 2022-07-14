@@ -45,9 +45,15 @@ age_dict = {'people aged <2':1, 'people aged 2-4':3, 'people aged 5-15':10,
 hhd_comp = pd.read_excel(wd + 'data/processed/LCFS/household_comp_code.xlsx')
 hhd_comp.columns = ['a062_desc', 'type of hhold', 'hhd_comp2', 'hhd_comp_adults', 'hhd_comp_children']
 
-for year in years:
-    lcfs[year] = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '.csv').set_index('case')
-    
+
+for year in years + ['2007_cpi', '2009_cpi']:
+    if year in years:
+        lcfs[year] = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '.csv').set_index('case')
+    else:
+        temp = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + year[:4] + '_wCPI.csv').set_index('case')
+        lcfs[year] = lcfs[int(year[:4])].loc[:,:'1.1.1.1'].iloc[:,:-1].join(temp.loc[:,'1.1.1.1':'12.5.3.5'])
+
+for year in years + ['2007_cpi', '2009_cpi']:
     # Get household makeup details
     people[year] = lcfs[year].loc[:,:'rooms in accommodation']
     people[year]['people aged <18'] = people[year][['people aged <2', 'people aged 2-4', 'people aged 5-15', 'people aged 16-17']].sum(1)
@@ -122,10 +128,10 @@ for year in years:
     
     people[year] = people[year].reset_index().set_index('case').join(temp[['hhd_age_group']]).reset_index()
     
-    # gather spend
+    # gather spend      
     lcfs[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].astype(float).apply(lambda x: x*lcfs[year]['weight'])
-    
-hhd_ghg, multipliers = estimate_emissions.make_footprint(lcfs, wd)
+
+hhd_ghg, multipliers = estimate_emissions.make_footprint({x:lcfs[x] for x in years}, wd)
 
 # household composition
 hhd_comp_list = pd.DataFrame(columns=['new_desc'])
@@ -145,13 +151,14 @@ for year in years:
     print(str(year) + ' saved')
     
 # save emissions using 2007 multipliers
-for year in [2007, 2008, 2009]:
-    temp = lcfs[year].T.join(multipliers[year][['multipliers']])
+for item in ['2007_cpi', '2009_cpi']:
+    year = int(item[:4])
+    temp = lcfs[item].T.join(multipliers[year][['multipliers']])
     temp = temp.apply(lambda x: x*temp['multipliers']).drop(['multipliers'], axis=1).T.reset_index().rename(columns={'index':'case'})
     temp = people[year].merge(temp, on='case')
     temp.loc[:,'1.1.1.1':'12.5.3.5'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/temp['weight'])
-    name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '.csv'
+    name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv'
     temp.to_csv(name)
-    print(str(year) + ' with 2007 multipliers saved')
+    print(item + ' with 2007 multipliers saved')
 
     
