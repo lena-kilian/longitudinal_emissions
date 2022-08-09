@@ -252,14 +252,14 @@ def make_footprint(hhdspend, wd):
     ukmrio['Y'] = convert36to33(ukmrio['Y'], concs_dict2, years)
     total_Yhh_112 = make_Yhh_112(ukmrio['Y'], years, meta)
     
-    coicop_exp_tot = expected_totals(hhdspend, list(hhdspend.keys()), concs_dict2, total_Yhh_112)
+    coicop_exp_tot = expected_totals(hhdspend, years, concs_dict2, total_Yhh_112)
 
-    yhh_wide = make_y_hh_307(ukmrio['Y'], coicop_exp_tot, list(hhdspend.keys()), concs_dict2, meta)
-    newY = make_new_Y(ukmrio['Y'], yhh_wide, meta, list(hhdspend.keys()))
+    yhh_wide = make_y_hh_307(ukmrio['Y'], coicop_exp_tot, years, concs_dict2, meta)
+    newY = make_new_Y(ukmrio['Y'], yhh_wide, meta, years)
 
-    ylcf_props = make_ylcf_props(hhdspend, list(hhdspend.keys()))
+    ylcf_props = make_ylcf_props(hhdspend, years)
 
-    COICOP_ghg = makefoot(ukmrio['S'], ukmrio['U'], newY, ukmrio['ghg'], list(hhdspend.keys()))
+    COICOP_ghg = makefoot(ukmrio['S'], ukmrio['U'], newY, ukmrio['ghg'], years)
 
     Total_ghg = {}; multipliers = {}
     for year in list(hhdspend.keys()):

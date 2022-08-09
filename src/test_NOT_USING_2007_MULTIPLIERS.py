@@ -36,16 +36,15 @@ products = cat_lookup[['Category']].drop_duplicates()['Category'].tolist()
 fam_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_type_lookup.xlsx')
 fam_code_lookup['Category_desc'] = [x.replace('  ', '') for x in fam_code_lookup['Category_desc']]
 
-years = list(range(2001, 2019))
+years = [2007, 2009]
 
-lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
-                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019']))
+lcf_years = dict(zip(years, ['2007', '2009']))
 
 # import cpi data --> uses 2015 as base year, change to 2007
 inflation = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0)\
-    .loc[[str(x) for x in years + [2015]], 'CPI ANNUAL RATE 00: ALL ITEMS 2015=100']\
+    .loc[[str(x) for x in years], 'CPI INDEX 00: ALL ITEMS 2015=100']\
         .T.dropna(how='all').astype(float)
-inflation = inflation.apply(lambda x: (x+100)/(inflation[str(years[0])] + 100))
+inflation = inflation.apply(lambda x: x/inflation[str(years[0])])
 
 # import data
 hhd_ghg = {}; pc_ghg = {}; people = {};
@@ -56,7 +55,7 @@ for year in years:
     income.columns = [x.lower() for x in income.columns]
     income = income[['income anonymised']].rename(columns={'income anonymised':'hhld_income'})
     
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv')\
+    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')\
         .set_index(['case'])
     pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year][pop])
     people[year] = hhd_ghg[year].loc[:,:'1.1.1.1'].iloc[:,:-1].join(income[['hhld_income']])
@@ -126,6 +125,12 @@ for i in range(len(hhd_name)):
         temp2 = cp.copy(temp)
         temp2[item] = 'All households'
         temp = temp.append(temp2)
+    if item == 'age_group':
+        temp2 = cp.copy(temp)
+        temp2 = temp2.loc[temp2[item] != 'Other']
+        temp2[item] = 'All adult households'
+        temp = temp.append(temp2)
+    
     
     temp = temp.groupby(['year', item])[products + ['Total_ghg', 'pc_income']].describe().stack(level=0).reset_index()
     temp['se'] = temp['std'] / np.sqrt(temp['count'])
@@ -165,8 +170,10 @@ for i in range(len(hhd_name)):
     plt.show()
 
 # clean up
-summary = all_describe[['year', 'var', 'family_code', 'level_2', '50%']]\
-    .drop_duplicates().set_index(['year', 'var', 'family_code', 'level_2'])[['50%']]
+summary_var = 'mean' # '50%' # 
+
+summary = all_describe[['year', 'var', 'family_code', 'level_2', summary_var]]\
+    .drop_duplicates().set_index(['year', 'var', 'family_code', 'level_2'])[[summary_var]]
 
 summary = summary.unstack(['year']).droplevel(axis=1, level=0)
 summary[2007] = summary[2007] + 0.000001
@@ -175,13 +182,10 @@ summary['percentage'] = (summary[2009] - summary[2007]) / summary[2007] * 100
 summary = summary.unstack(['level_2'])
  
 
-"""   
+"""
 products = summary.columns.level[2]
 for item in :
-    
-summary[2007] = summary[2007] + 0.000001
-summary[2009] = summary[2009] + 0.000001
-summary['percentage'] = (summary[2009] - summary[2007]) / summary[2007] * 100
-summary = summary.drop(2009, axis=1).unstack(level='CCP1').reset_index() 
-
 """
+
+final = summary.loc[[('composition of household', 'All households'), ('age_group', 'All adult households')]]\
+    .stack(level=1)

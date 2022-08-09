@@ -171,12 +171,12 @@ def import_lcfs(year, dvhh_file, dvper_file):
         useful_data['4.4.2'] = (dvhh['b018']+dvhh['b170']+dvhh['p249t']+dvhh['b221']+dvhh['c45212t']+dvhh['c45222t'])
     elif year >= 2009 and year <2013:
         useful_data['4.4.1'] = (dvhh['b175']+dvhh['p250t']+dvhh['c45112t']+dvhh['b224'])
-        useful_data['4.4.2'] = (dvhh['b018']+dvhh['b170']+dvhh['p249t']+dvhh['b223']+dvhh['c45212t']+dvhh['c45222t'])
+        useful_data['4.4.2'] = (dvhh['b018']+dvhh['b170']+dvhh['p249t']+dvhh['b223']+dvhh['c45212t']+dvhh['c45222t'])        
     elif year >= 2013 and year <2015:
         useful_data['4.4.1'] = (dvhh['b489']+dvhh['b227']+dvhh['b254']+dvhh['b234']+dvhh['c45112t']+dvhh['b491']+dvhh['b2241'])
         useful_data['4.4.2'] = (dvhh['b490']+dvhh['b226']+dvhh['b255']+dvhh['b235']+dvhh['c45212t']+dvhh['b492']+dvhh['b2231']+dvhh['b018']+dvhh['c45222t'])
     else:
-        useful_data['4.4.1'] = (dvhh['b489']+dvhh['b227']+dvhh['b254']+dvhh['b234']+dvhh['c45112t'])
+        useful_data['4.4.1'] = (dvhh['b489']+dvhh['b227']+dvhh['b254']+dvhh['b234']+dvhh['c45112t'])      
         useful_data['4.4.2'] = (dvhh['b490']+dvhh['b226']+dvhh['b255']+dvhh['b235']+dvhh['c45212t']+dvhh['b018']+dvhh['c45222t'])
     useful_data['4.4.3.1'] = dvhh['c45411t']
     useful_data['4.4.3.2'] = dvhh['b017']
@@ -269,12 +269,12 @@ def import_lcfs(year, dvhh_file, dvper_file):
     useful_data['8.2.1'] = dvhh['c82111t']
     useful_data['8.2.2'] = dvhh['c82112t']
     useful_data['8.2.3'] = dvhh['c82113t']
-    if year != 2018:
+    if year < 2018:
         useful_data['8.3.1'] = (dvhh['b166']+dvhh['c83111c']+dvhh['c83115t'])
     else:
         useful_data['8.3.1'] = (dvhh['b166b']+dvhh['c83111c']+dvhh['c83115t'])
     useful_data['8.3.2'] = dvhh['c83112t']
-    if year != 2018:
+    if year < 2018:
         useful_data['8.3.3'] = (dvhh['b1661']+dvhh['c83113c'])
     else:
         useful_data['8.3.3'] = (dvhh['b1661b']+dvhh['c83113c'])
@@ -339,7 +339,7 @@ def import_lcfs(year, dvhh_file, dvper_file):
     useful_data['9.4.2.2'] = dvhh['c94212t']
     useful_data['9.4.2.3'] = dvhh['c94221t']
     useful_data['9.4.3.1'] = (dvhh['b181']+dvhh['c94231c']+dvhh['c94232t'])
-    if year != 2018:
+    if year < 2018:
         useful_data['9.4.3.2'] = (dvhh['b192']+dvhh['c94233c'])
         useful_data['9.4.3.3'] = (dvhh['b191']+dvhh['c94237c'])
         useful_data['9.4.3.4'] = (dvhh['b193']+dvhh['c94235c'])

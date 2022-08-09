@@ -23,7 +23,7 @@ age_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/age_lookup.xlsx')
 fam_code_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_type_lookup.xlsx')
 fam_code_lookup['Category_desc'] = [x.replace('  ', '') for x in fam_code_lookup['Category_desc']]
 
-years = list(range(2001, 2019))
+years = list(range(2001, 2020))
 
 family_name = ['no people', 'people aged <2', 'people aged 2-4', 'people aged 5-15', 'people aged 16-17', 'people aged 18-44', 
                'people aged 45-59', 'people aged 60-64', 'people aged 65-69', 'people aged >69']

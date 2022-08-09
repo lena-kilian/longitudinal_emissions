@@ -14,9 +14,9 @@ import pandas as pd
 # Flights
 lcf_filepath = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/raw/LCFS/'
 
-years = list(range(2001, 2019))
+years = list(range(2001, 2020))
 lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
-                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019']))
+                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020']))
 
 
 

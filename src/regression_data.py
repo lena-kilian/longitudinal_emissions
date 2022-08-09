@@ -25,6 +25,9 @@ else:
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
+filename = "'Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv'"
+#filename = "'Household_emissions_' + str(year) + '.csv'"
+
 cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
 cat_lookup['ccp_code'] = [x.split(' ')[0] for x in cat_lookup['ccp']]
 cat_dict = dict(zip(cat_lookup['ccp_code'], cat_lookup['Category']))
@@ -39,9 +42,14 @@ years = [2007, 2009]
 
 lcf_years = dict(zip(years, ['2007', '2009']))
 
-inflation_070809 = [1, 1.04, 1.03] #inflation_06070809 =[0.9 6, 1, 1.04, 1.03]
+# import cpi data --> uses 2015 as base year, change to 2007
+inflation = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0)\
+    .loc[[str(x) for x in years], 'CPI INDEX 00: ALL ITEMS 2015=100']\
+        .T.dropna(how='all').astype(float)
+inflation = inflation.apply(lambda x: x/inflation[str(years[0])])
+
 # import data
-hhd_ghg = {}; pc_ghg = {}; people = {}; hhd_ghg_2007m = {}; pc_ghg_2007m= {}
+hhd_ghg = {}; people = {}
 for year in years:
     file_dvhh = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
     file_dvper = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
@@ -49,9 +57,10 @@ for year in years:
     # income
     income = lcfs_import.import_lcfs(year, file_dvhh, file_dvper).drop_duplicates()
     income.columns = [x.lower() for x in income.columns]
-    if year >= 2007 and year <= 2009:
-        income['income anonymised'] = income['income anonymised'] / inflation_070809[year-2007]
     income = income[['income anonymised']].rename(columns={'income anonymised':'hhld_income'})
+    # adjust for inflation if CPI used and 2007 m
+    if filename.split("'")[-2] == '_wCPI.csv':
+        income['hhld_income'] = income['hhld_income'] / inflation[str(year)]
     
     #extract person variables
     temp = pd.read_csv(file_dvper, sep='\t')
@@ -61,10 +70,10 @@ for year in years:
     ms = temp.set_index('case')[['a002', 'a006p']]
     # code 0 if not related to anyone in hhld
     ms['relative_hhld'] = 0
-    ms.loc[ms['a002'].isin([0, 9]) == False, 'relative_hhld'] = 1
+    ms.loc[ms['a002'].isin([0, 1, 9]) == False, 'relative_hhld'] = 1
     # code 0 if not in relationship with anyone in hhld
     ms['partner_hhld'] = 0
-    ms.loc[ms['a006p'].isin([1, 3, 8]) == True, 'partner_hhld'] = 1
+    ms.loc[ms['a002'].isin([1]) == True, 'partner_hhld'] = 1
     # aggregate to hhld level
     ms = ms.sum(axis=0, level=0)
     ms.loc[ms['partner_hhld'] > 0, 'partner_hhld'] = 1
@@ -88,9 +97,7 @@ for year in years:
 
     
     # emission data
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv')\
-        .set_index(['case'])
-    pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year][pop])
+    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/' + eval(filename)).set_index(['case'])
     people[year] = hhd_ghg[year].loc[:,:'1.1.1.1'].iloc[:,:-1]\
         .join(income[['hhld_income']])\
             .join(ms[['relative_hhld', 'partner_hhld']])\
@@ -98,11 +105,6 @@ for year in years:
                     .join(sex)
     people[year]['pc_income'] = people[year]['hhld_income'] / people[year][pop]
     people[year]['population'] = people[year][pop] * people[year]['weight']
-    
-    if year in years:
-        hhd_ghg_2007m[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '.csv')\
-            .set_index('case')
-        pc_ghg_2007m[year] = hhd_ghg_2007m[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg_2007m[year][pop])
     
     q = ps.Quantiles(people[year]['pc_income'], k=10)
     people[year]['income_group'] = people[year]['pc_income'].map(q)
@@ -124,7 +126,7 @@ keep = ['weight', pop, 'no people', 'population', 'oac_supergroup', 'gor modifie
         'people aged >69']
 
 for year in years:
-    temp = pc_ghg_2007m[year].loc[:,'1.1.1.1':'12.5.3.5'].rename(columns=cat_dict).sum(axis=1, level=0)
+    temp = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].rename(columns=cat_dict).sum(axis=1, level=0)
     temp['Total_ghg'] = temp.sum(axis=1)
     temp = people[year][keep].join(temp).reset_index()
     temp['year'] = year

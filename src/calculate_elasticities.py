@@ -38,6 +38,15 @@ years = [2007, 2009]
 
 lcf_years = dict(zip(years, ['2007', '2009']))
 
+filename = "'Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv'"
+#filename = "'Household_emissions_' + str(year) + '.csv'"
+
+# import cpi data --> uses 2015 as base year, change to 2007
+inflation = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0)\
+    .loc[[str(x) for x in years], 'CPI INDEX 00: ALL ITEMS 2015=100']\
+        .T.dropna(how='all').astype(float)
+inflation = inflation.apply(lambda x: x/inflation[str(years[0])])
+
 # import data
 hhd_ghg = {}; pc_ghg = {}; people = {}
 for year in years:
@@ -47,8 +56,11 @@ for year in years:
     income.columns = [x.lower() for x in income.columns]
     income = income[['income anonymised']].rename(columns={'income anonymised':'hhld_income'})
     
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2007_multipliers_' + str(year) + '_wCPI.csv')\
-        .set_index(['case'])
+    # adjust for inflation if CPI used and 2007 m
+    if filename.split("'")[-2] == '_wCPI.csv':
+        income['hhld_income'] = income['hhld_income'] / inflation[str(year)]
+    
+    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/' + eval(filename)).set_index(['case'])
     pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year][pop])
     people[year] = hhd_ghg[year].loc[:,:'1.1.1.1'].iloc[:,:-1].join(income[['hhld_income']])
     people[year]['pc_income'] = people[year]['hhld_income'] / people[year][pop]
