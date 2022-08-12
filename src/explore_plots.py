@@ -19,10 +19,8 @@ import pysal as ps
 
 pop = 'no people'
 
-if pop == 'no people':
-    axis = 'tCO$_{2}$e / capita'
-else:
-    axis = 'tCO$_{2}$e / adult'
+axis = 'tCO$_{2}$e / capita'
+
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -84,9 +82,9 @@ data = data.sort_values('Product Category')
 # Linegraph values
 fig, ax = plt.subplots(figsize=(7.5, 5))
 sns.lineplot(ax=ax, data=data.reset_index(), x='year', y='ghg', hue='Product Category')
-ax.set_ylabel('tCO$_{2}$e / adult'); ax.set_xlabel('Year')
+ax.set_ylabel(axis); ax.set_xlabel('Year')
 plt.legend(bbox_to_anchor=(1.6, 0.75))
-plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs.png', bbox_inches='tight')
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs.png', bbox_inches='tight', dpi=300)
 plt.show()
 
 # Linegraph w/ percentage
@@ -96,10 +94,10 @@ data_pct = data_pct.apply(lambda x: x/values_01*100).stack().reset_index()
 
 fig, ax = plt.subplots(figsize=(7.5, 5))
 sns.lineplot(ax=ax, data=data_pct, x='year', y='ghg', hue='Product Category')
-ax.set_ylabel('tCO$_{2}$e / adult'); ax.set_xlabel('Year')
+ax.set_ylabel('Percentage change in ' + axis + ' compared to 2001'); ax.set_xlabel('Year')
 plt.legend(bbox_to_anchor=(1.6, 0.75))
 plt.axhline(y=100, linestyle=':', color='k', lw=0.5)
 plt.ylim(50,150)
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_pct.png',
-            bbox_inches='tight')
+            bbox_inches='tight', dpi=300)
 plt.show()

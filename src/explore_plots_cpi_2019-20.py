@@ -27,18 +27,8 @@ cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal
 cat_lookup['ccp_code'] = [x.split(' ')[0] for x in cat_lookup['ccp']]
 cat_dict = dict(zip(cat_lookup['ccp_code'], cat_lookup['Category_2']))
 
-cat_cats = {'Electricity, gas, liquid and solid fuels':'Housing',
-            'Private transport':'Transport',
-            'Other consumption':'Other',
-            'Food and Drinks':'Food',
-            'Air transport':'Transport',
-            'Recreation and culture goods':'Other',
-            'Eating and drinking out':'Food',
-            'Housing, water and waste':'Housing',
-            'Clothing and Footwear':'Other',
-            'Public road transport':'Transport',
-            'Takeaway Meals':'Food',
-            'Recreation and culture services':'Other'}
+temp = cat_lookup[['Category_2', 'Super_cats']].drop_duplicates()
+cat_cats = dict(zip(temp['Category_2'], temp['Super_cats']))
 
 years = [[2007, 2009], [2019, 2020]]
 
@@ -116,22 +106,50 @@ plot_data = plot_data.set_index(['year', 'year_group', 'Category', 'Category_ord
     .unstack(level=['year', 'year_group']).droplevel(axis=1, level=0)
 plot_data = plot_data['after'] - plot_data['before']
 plot_data = plot_data.stack().reset_index().sort_values(['Super_cats', 'year_group']).rename(columns={0:'ghg_difference'})
+plot_data = plot_data.set_index('Super_cats').loc[['Food and Drinks', 'Housing', 'Transport', 'Other']]
 #plot
-fig, ax = plt.subplots(figsize=(5, 5))
+fig, ax = plt.subplots(figsize=(5, 8))
 sns.barplot(ax=ax, data=plot_data, x='ghg_difference', y='Category', hue='year_group', palette='RdBu', edgecolor='black')
 ax.set_xlabel('Difference in ' + axis); ax.set_ylabel('')
 ax.set_xlim(-1, 1)
-ax.legend(bbox_to_anchor=(1.4, 1))
-for i in [2, 4, 8]:
+ax.legend(bbox_to_anchor=(1.4, 0.5))
+for i in [7, 9, 12]:
     plt.axhline(y=i+0.5, color='k', linestyle='--', linewidth=1)
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/boxplot_differences.png', 
             bbox_inches='tight', dpi=200)
 plt.show()
     
+summary_ghg = temp.drop(['Category_order'], axis=1).set_index(['Super_cats', 'Category', 'year', 'year_group'])\
+    .unstack(['year_group', 'year']).droplevel(axis=1 ,level=0)
 
 #########################
 # Percentage bar charts #
 #########################
+
+temp = pc_ghg.set_index(['year', 'Category_order', 'Category', 'year_group']).unstack(['year', 'year_group']).droplevel(axis=1, level=0)
+temp = temp.apply(lambda x:x/x.sum()*100).sort_values((2007, '2007-2009'), ascending=False)
+
+plot_data = temp.rename(columns={2007:'before', 2009:'after', 2019:'before', 2020:'after'})
+plot_data = plot_data.stack().reset_index().rename(columns={0:'Pct_ghg'})
+plot_data['Super_cats'] = plot_data['Category'].map(cat_cats)
+plot_data = plot_data.set_index(['Super_cats', 'year_group', 'Category', 'Category_order'])\
+    .unstack(level=['year_group'])
+plot_data = plot_data['after'] - plot_data['before']
+plot_data = plot_data.stack().reset_index().sort_values(['Super_cats', 'year_group']).rename(columns={0:'ghg_difference'})
+plot_data = plot_data.set_index('Super_cats').loc[['Food and Drinks', 'Housing', 'Transport', 'Other']]
+
+#plot
+fig, ax = plt.subplots(figsize=(5, 8))
+sns.barplot(ax=ax, data=plot_data, x='ghg_difference', y='Category', hue='year_group', palette='RdBu', edgecolor='black')
+ax.set_xlabel('Percentage difference in ' + axis); ax.set_ylabel('')
+ax.set_xlim(-25, 25)
+ax.legend(bbox_to_anchor=(1.4, 1))
+for i in [7, 9, 12]:
+    plt.axhline(y=i+0.5, color='k', linestyle='--', linewidth=1)
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/boxplot_differences_percent.png', 
+            bbox_inches='tight', dpi=200)
+plt.show()
+
 
 temp = pc_ghg.set_index(['year', 'Category_order', 'Category']).drop(['year_group'], axis=1).unstack(['year'])
 temp = temp.apply(lambda x:x/x.sum()*100).droplevel(axis=1, level=0).sort_values(2007, ascending=False)
@@ -182,3 +200,5 @@ for cat in temp[['Super_cats']].drop_duplicates()['Super_cats']:
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/boxplot_' + cat + '_percent.png', 
                 bbox_inches='tight', dpi=200)
     plt.show()
+    
+summary_pct = temp.drop(['Category_order'], axis=1).set_index(['Super_cats', 'Category', 'year']).unstack('year')

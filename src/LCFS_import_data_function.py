@@ -107,9 +107,8 @@ def import_lcfs(year, dvhh_file, dvper_file):
     useful_data['Males aged 5-15'] = useful_data['Males aged 5-17'] - useful_data['Males aged 16-17']
     useful_data['Females aged 5-15'] = useful_data['Females aged 5-17'] - useful_data['Females aged 16-17']
     useful_data['People aged 5-15'] = useful_data['People aged 5-17'] - useful_data['People aged 16-17']
-    useful_data = useful_data.drop(['Males aged 5-17', 'Females aged 5-17', 'People aged 5-17'], axis=1)
-
-  
+    useful_data = useful_data.drop(['Males aged 5-17', 'Females aged 5-17', 'People aged 5-17'], axis=1)        
+        
     if year < 2005:
         useful_data['rooms in accommodation'] = dvhh['a114']
     else:

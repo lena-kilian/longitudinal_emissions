@@ -18,7 +18,12 @@ import pysal as ps
 
 
 pop = 'hhld_oecd_equ'
-summary_var = '50%' # 'mean' # 
+summary_var = 'mean' # '50%' #
+
+if summary_var == 'mean':
+    xmax = 35
+else:
+    xmax = 30
 
 if pop == 'no people':
     axis = 'tCO$_{2}$e / capita'
@@ -80,7 +85,7 @@ for year in years:
 
 all_ghg = pd.DataFrame(columns=['year'])
 keep = ['weight', pop, 'no people', 'composition of household', 'population', 'income_group', 'age_group', 
-        'student_hhld', 'pc_income']
+        'student_hhld', 'socio-ec hrp', 'pc_income']
 for year in [2007, 2009]:
     temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].rename(columns=cat_dict).sum(axis=1, level=0)
     temp['Total_ghg'] = temp.sum(axis=1)
@@ -109,7 +114,7 @@ all_data.index = list(range(len(all_data)))
 
 
 all_describe = pd.DataFrame(columns=['year'])
-hhd_name = ['income_group', 'composition of household', 'age_group']
+hhd_name = ['income_group', 'composition of household', 'age_group', 'socio-ec hrp']
 for i in range(len(hhd_name)):
     item = hhd_name[i]
     temp = cp.copy(all_data)
@@ -123,6 +128,13 @@ for i in range(len(hhd_name)):
         code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
         temp[item] = temp[item].map(code_dict)
         ylab = 'Housheold Composition'
+    elif item == 'socio-ec hrp':
+        code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
+        code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
+        temp[item] = temp[item].map(code_dict)
+        temp = temp.sort_values('Total_ghg')
+        ylab = 'Socio-economic status (HRP)'
+        check = temp.groupby(['year', item]).count()[['case']]
     elif item == 'age_group':
         temp = temp.sort_values([item, 'year'], ascending=True)
         temp = temp.loc[temp[item] != 'Household with children']
@@ -149,11 +161,28 @@ for i in range(len(hhd_name)):
     all_describe = all_describe.append(temp2)
     
     # sort for plot and remove all households
-    temp = temp.loc[temp[item] != 'All households']
+    temp = temp.loc[(temp[item] != 'All households') & (temp[item] != 'All adult households')]
     if item == 'composition of household':
         temp = temp.sort_values([summary_var, 'year'], ascending=True)
+        
+    if item == 'income_group':
+        temp = temp.sort_values([item, 'year'])
+        temp[item] = temp[item].str[11:]
     
-    temp = temp.loc[(temp[item] != 'Other') & (temp['level_2'] == 'Total_ghg')]
+    temp = temp.loc[(temp[item] != 'Not stated')  & (temp[item] != 'Other') & (temp['level_2'] == 'Total_ghg')]
+    if item == 'socio-ec hrp':
+        temp = temp.sort_values([item, 'year'])
+        temp[item] = temp[item].map({'00_Higher professional and managerial':'Higher professional and managerial',
+                                     '01_Employers':'Employers',
+                                     '02_Lower professional and managerial, and higher technical':'Lower professional and man-\nagerial, and higher technical',
+                                     '03_Higher supervisory':'Higher supervisory',
+                                     '04_Intermediate administrative, service, and technical occupations':'Intermediate administrative, ser-\nvice, and technical occupations',
+                                     '05_Own account workers':'Own account workers',
+                                     '06_Lower supervisory and technical occupations':'Lower supervisory and\ntechnical occupations',
+                                     '07_Semi-routine occupations':'Semi-routine occupations',
+                                     '08_Full-time students':'Full-time student',
+                                     '09_Routine occupations ':'Routine occupations',
+                                     '10_Unemployed':'Unemployed'})
     
     h = len(temp[[item]].drop_duplicates())
     
@@ -172,9 +201,10 @@ for i in range(len(hhd_name)):
     
     # save
     plt.legend(bbox_to_anchor=(1, 1))
-    plt.xlim(0, 30)
-    plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barchart_mean_' + item + '_' + summary_var + '.png', bbox_inches='tight', dpi=200)
+    plt.xlim(0, xmax)
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barchart_' + summary_var + '_' + item + '.png', bbox_inches='tight', dpi=200)
     plt.show()
+
 
 # clean up
 
@@ -184,7 +214,8 @@ summary = all_describe[['year', 'var', 'family_code', 'level_2', summary_var]]\
 summary = summary.unstack(['year']).droplevel(axis=1, level=0)
 summary[2007] = summary[2007] + 0.000001
 summary[2009] = summary[2009] + 0.000001
-summary['percentage'] = (summary[2009] - summary[2007]) / summary[2007] * 100
+summary['differences'] = (summary[2009] - summary[2007])
+summary['percentage'] = summary['differences'] / summary[2007] * 100
 summary = summary.unstack(['level_2'])
 
 order = [(2007, 'pc_income'),
@@ -207,12 +238,8 @@ order = [(2007, 'pc_income'),
          ('percentage', 'Private and public road transport'),
          ('percentage', 'Recreation, culture, and clothing')]
 
-summary_final = summary[order].loc[['income_group', 'composition of household', 'age_group']]
+summary_final = summary[order].loc[['income_group', 'composition of household', 'age_group', 'socio-ec hrp']]
 
-"""
-products = summary.columns.level[2]
-for item in :
-"""
 
 final = summary.loc[[('composition of household', 'All households'), ('age_group', 'All adult households')]]\
     .stack(level=1)
@@ -270,5 +297,26 @@ for i in range(len(hhd_name)):
     # save
     plt.legend(bbox_to_anchor=(1, 1))
     plt.xlim(0, 30)
-    plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/stacked_barchart_mean_' + item + '.png', bbox_inches='tight', dpi=200)
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/stacked_barchart_' + summary_var + '_' + item + '.png', bbox_inches='tight', dpi=200)
     plt.show()
+
+
+# plot differences
+plot_data = summary['differences'].drop(['pc_income'], axis=1)
+
+for cat in ['income_group', 'age_group', 'composition of household', 'socio-ec hrp']:
+    temp = plot_data.loc[cat]
+    x = []
+    for y in ['Other', 'All households', 'All adult households']:
+        if y in temp.index:
+            x.append(y)
+    temp = temp.drop(x, axis=0).drop('Total_ghg', axis=1).stack().reset_index()\
+        .rename(columns={'level_2':'Product', 0:'change'})
+    if cat == 'socio-ec hrp':
+        temp = temp.loc[temp['family_code'] != 'Not stated']
+    fig, ax = plt.subplots(figsize=(4,6))
+    sns.barplot(ax=ax, data=temp, y='Product', hue='family_code', x='change', palette='Set1')
+    ax.set_xlim(-4.75, 1)
+    plt.legend(bbox_to_anchor=(1,1))
+    plt.show()
+    

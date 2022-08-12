@@ -82,14 +82,23 @@ for year in years:
     # mean age
     age = temp.set_index('case')[['a005p']]
     age['mean_age_adults'] = age.loc[age['a005p'] >= 18].mean(axis=0, level=0)['a005p']
+    age['mean_age_children'] = age.loc[age['a005p'] < 18].mean(axis=0, level=0)['a005p']
     age = age.mean(axis=0, level=0).rename(columns = {'a005p':'mean_age'})
     
     # sex
+    # adults
     sex = temp[['case', 'a004', 'a005p']]
     temp2 = sex.loc[sex['a005p'] >= 18].groupby(['case', 'a004']).count().unstack(level='a004').fillna(0)\
         .droplevel(axis=1, level=0).rename(columns={1:'No_adult_male', 2:'No_adult_female'})
     temp2['fraction_female_adults'] = temp2['No_adult_female'] / temp2.sum(1)
+    sex = sex.join(temp2)
+    # children
+    temp2 = temp[['case', 'a004', 'a005p']]
+    temp2 = temp2.loc[temp2['a005p'] < 18].groupby(['case', 'a004']).count().unstack(level='a004').fillna(0)\
+        .droplevel(axis=1, level=0).rename(columns={1:'No_children_male', 2:'No_children_female'})
+    temp2['No_children'] = temp2['No_children_male'] + temp2['No_children_female']
     sex = sex.set_index('case').join(temp2)
+    # all
     temp2 = sex.groupby(['case', 'a004'])[['a005p']].count().unstack(level='a004').fillna(0)\
         .droplevel(axis=1, level=0).rename(columns={1:'No_male', 2:'No_female'})
     temp2['fraction_female'] = temp2['No_female'] / temp2.sum(1)
@@ -110,17 +119,17 @@ for year in years:
     people[year]['income_group'] = people[year]['pc_income'].map(q)
     
     # import age range and student status
-    if year in years:
-        temp = pd.read_csv(wd + 'data/processed/LCFS/Socio-demographic/person_variables_' + str(year) + '.csv').set_index('case')
-        people[year] = people[year].join(temp[['age_group', 'student_hhld']])
+    temp = pd.read_csv(wd + 'data/processed/LCFS/Socio-demographic/person_variables_' + str(year) + '.csv').set_index('case')
+    people[year] = people[year].join(temp[['age_group']])
         #people[year]['age_group'] = people[year]['age_group'] + ' ' + people[year]['student_hhld'] 
 
 all_ghg = pd.DataFrame(columns=['year'])
 keep = ['weight', pop, 'no people', 'population', 'oac_supergroup', 'gor modified', 
         'composition of household', 'age_group', 
         'fraction_female_adults', 'fraction_female', 'No_adult_male', 'No_adult_female', 'No_male', 'No_female',
-        'mean_age_adults', 'mean_age',
-        'student_hhld', 'pc_income', 'partner_hhld', 'relative_hhld',
+        'No_children_male', 'No_children_female',
+        'mean_age_adults', 'mean_age', 'mean_age_children',
+        'socio-ec hrp', 'pc_income', 'partner_hhld', 'relative_hhld',
         'people aged <2', 'people aged 2-4', 'people aged 5-15', 'people aged 16-17',
         'people aged 18-44', 'people aged 45-59', 'people aged 60-64', 'people aged 65-69', 
         'people aged >69']
@@ -138,13 +147,13 @@ all_ghg['gor modified'] = [str(int(x)) for x in all_ghg['gor modified']]
 all_ghg['oac_supergroup'] = [str(x) for x in all_ghg['oac_supergroup']]
     
 # map var descriptions
-for item in ['composition of household']:
+for item in ['composition of household', 'socio-ec hrp']:
     code_dict = fam_code_lookup.loc[fam_code_lookup['Variable'].str.lower() == item]
     code_dict = dict(zip(code_dict['Category_num'], code_dict['Category_desc']))
     all_ghg[item] = all_ghg[item].map(code_dict)
     
 # make dummies
-var_list = ['oac_supergroup', 'gor modified', 'composition of household', 'age_group', 'student_hhld']
+var_list = ['oac_supergroup', 'gor modified', 'composition of household', 'age_group', 'socio-ec hrp']
 var_abrv = ['oac', 'gor', 'coh', 'age', 'st']
 
 var_dict = dict(zip(var_list, var_abrv))
