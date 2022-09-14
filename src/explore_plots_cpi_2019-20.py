@@ -202,3 +202,26 @@ for cat in temp[['Super_cats']].drop_duplicates()['Super_cats']:
     plt.show()
     
 summary_pct = temp.drop(['Category_order'], axis=1).set_index(['Super_cats', 'Category', 'year']).unstack('year')
+
+
+save = pc_ghg.loc[pc_ghg['year'] ==2020]
+save['cats'] = save['Category'].map({'Rice, bread, cereals':'Food and Drinks', 
+                                     'Other food':'Food and Drinks', 
+                                     'Meat and fish':'Food and Drinks', 
+                                     'Dairy and eggs':'Food and Drinks', 
+                                     'Fruit and vegetables':'Food and Drinks', 
+                                     'Drinks':'Food and Drinks', 
+                                     'Other consumption':'Other consumption',
+                                     'Clothing and Footwear':'Recreation, culture, and clothing',
+                                     'Housing, water and waste':'Housing, water and waste',
+                                     'Electricity, gas, liquid and solid fuels':'Electricity, gas, liquid and solid fuels',
+                                     'Private transport':'Private and public road transport',
+                                     'Public road transport':'Private and public road transport',
+                                     'Air transport':'Air transport',
+                                     'Recreation and culture goods':'Recreation, culture, and clothing',
+                                     'Recreation and culture services':'Recreation, culture, and clothing',
+                                     'Eating and drinking out':'Food and Drinks', 
+                                     'Takeaway Meals':'Recreation, culture, and clothing'})
+
+save = save.groupby('cats').sum()
+save.to_csv(wd + 'temp_2020_results.csv')

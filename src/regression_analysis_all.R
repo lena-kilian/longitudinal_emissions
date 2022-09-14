@@ -14,34 +14,27 @@ setwd("~/Documents/Ausbildung/UoLeeds/PhD/Analysis")
 
 data <- read_csv('data/processed/Longitudinal_model/model_data_2007-09.csv') %>%
   filter(oac != 'oac_', 
-         st != 'Not stated')
+         st != 'Not stated') %>%
+  mutate(pensioner_hhld = coh_1adultpensioner + coh_2padultspensioners)
 
 dv_list <-  c('Food_and_Drinks', 'Other_consumption', 'Recreation_culture_and_clothing',
               'Housing_water_and_waste', 'Electricity_gas_liquid_and_solid_fuels',
               'Private_and_public_road_transport', 'Air_transport', 'Total_ghg')
 
-#for (dv in dv_list){
-#  data[dv] <- data[dv] *10}
 
 # make lists with variables
 main_controls <- c('oac_1', 'oac_2', 'oac_3', 'oac_4', 'oac_5', 'oac_6', # 'oac_7',
                    'gor_1', 'gor_2', 'gor_3', 'gor_4', 'gor_5', 'gor_6', 'gor_7', 'gor_8', 
                    'gor_9', 'gor_10', 'gor_11', #'gor_12'
-                   'hhld_income', 'year_before', 'relative_hhld', 'partner_hhld', # 'hhld_oecd_equ',
-                   #'fraction_female_adults', 'mean_age_adults', 'mean_age_children'
-                   'No_adult_male', 'No_adult_female', 'No_children_male', 'No_children_female',
-                   'mean_age_adults')
-no_people <- c('people_aged_m2', 'people_aged_2_4', 'people_aged_5_15', 'people_aged_16_17', 'people_aged_18_44', 
-               'people_aged_45_59', 'people_aged_60_64', 'people_aged_65_69', 'people_aged_p69')
-hhld_comp <- c('coh_1adult', 'coh_2adultswithchildren', 'coh_2padult18_30', 'coh_2adults', 'coh_1adultwithchildren',
-               'coh_3padultswithchildren', 'coh_3padults', 'coh_1adultpensioner', 'coh_1adult18_30', 
-               'coh_2padultspensioners') #, 'coh_Other',
-hhld_age <- c('age_18_29', 'age_30_39', 'age_40_49',  'age_50_59',  'age_60_69', 'age_70p') # 'age_Householdwithchildren', 'age_Other'
-students <- c('st_Allstudents') #, 'st_Notallstudents'
+                   'relative_hhld', 'partner_hhld', 'fraction_female_adults', 'year_before')
 ses <- c("st_09_Routineoccupations", "st_04_Intermediateadministrativeserviceandtechnicaloccupations", 
          "st_07_Semi_routineoccupations", "st_02_Lowerprofessionalandmanagerialandhighertechnical",
          "st_06_Lowersupervisoryandtechnicaloccupations", "st_01_Employers", "st_08_Full_timestudents", 
-         "st_03_Highersupervisory", "st_05_Ownaccountworkers", "st_10_Unemployed") # "st_00_Higherprofessionalandmanagerial", 
+         "st_03_Highersupervisory", "st_05_Ownaccountworkers", "st_10_Unemployed", # "st_00_Higherprofessionalandmanagerial", 
+         'hhld_income', 
+         'people_aged_m2', 'people_aged_2_4', 'people_aged_5_15', 'people_aged_16_17', 'people_aged_18_44', 
+         'people_aged_45_59', 'people_aged_60_64', 'people_aged_65_69', 'people_aged_p69',
+         'pensioner_hhld') 
 
 # run model with waist as the outcome and height as the covariate
 make_formula <- function(var_list){
@@ -56,14 +49,8 @@ make_formula <- function(var_list){
 }
 
 variable <- 'ses'
-if (variable == 'hhld_age') {
-  data_mod <- filter(data, age != 'Other' & age != 'Household with children')
-  var_list <- c('age_18_29', 'age_30_39', 'age_50_59',  'age_60_69', 'age_70p') # remove 40-49 one for dummy
-}
-if (variable != 'hhld_age') {
-  data_mod <- data
-  var_list <- eval(parse(text = variable))
-}
+data_mod <- data
+var_list <- eval(parse(text = variable))
 
 for (dv in dv_list){
   # winsorise at 10%
@@ -127,7 +114,7 @@ for (dv in dv_list){
   # repeat to get fitted values
   mod_2 <- lm(formula, data = data_w) 
   par(mfrow = c(2, 2)); plot(mod_2); par(mfrow = c(1, 1)) # view diagnostic plots
-  #jpeg(paste('Longitudinal_Emissions/outputs/Regression/Regression_residuals/', dv, '_ses.jpeg', sep=''), quality = 100)
+  #jpeg(paste('Longitudinal_Emissions/outputs/Regression/Regression_residuals/', dv, '_all.jpeg', sep=''), quality = 100)
   
   results_2 <- data.frame(summary(mod_2)$coefficients)
   results_2['variable'] <- row.names(results_2)
@@ -146,11 +133,11 @@ for (dv in dv_list){
   # weighted regression
   mod_w <- lm(formula, data = data_w, weights=data_w$mod_weight)
   par(mfrow = c(2, 2)); plot(mod_w); par(mfrow = c(1, 1)) # view diagnostic plots
-  #jpeg(paste('Longitudinal_Emissions/outputs/Regression/Regression_residuals/', dv, '_W_ses.jpeg', sep=''), quality = 100)
+  #jpeg(paste('Longitudinal_Emissions/outputs/Regression/Regression_residuals/', dv, '_W_all.jpeg', sep=''), quality = 100)
   
   mod_2 <- lm(formula, data = data_w) 
   par(mfrow = c(2, 2)); plot(mod_2); par(mfrow = c(1, 1)) # view diagnostic plots
-  #jpeg(paste('Longitudinal_Emissions/outputs/Regression/Regression_residuals/', dv, '_ses.jpeg', sep=''), quality = 100)
+  #jpeg(paste('Longitudinal_Emissions/outputs/Regression/Regression_residuals/', dv, '_all.jpeg', sep=''), quality = 100)
   
   # produce summary of model parameters
   results_w <- data.frame(summary(mod_w)$coefficients)
@@ -169,7 +156,7 @@ for (dv in dv_list){
   
   results_2 %>% 
     rbind(results_w) %>%
-    write_csv(paste('Longitudinal_Emissions/outputs/Regression/Regression_', dv, '_ses.csv', sep=''))
+    write_csv(paste('Longitudinal_Emissions/outputs/Regression/Regression_', dv, '_all.csv', sep=''))
   
   # plot residuals
   residuals_w = data.frame(res = mod_w$residuals)
@@ -193,6 +180,6 @@ for (dv in dv_list){
   data_w %>% 
     gather(age_group, age_dummy, eval(parse(text = variable))) %>%
     filter(age_dummy == 1) %>% 
-    write_csv(paste('Longitudinal_Emissions/outputs/Data_W_from_R_', dv, '_ses.csv', sep=''))
+    write_csv(paste('Longitudinal_Emissions/outputs/Data_W_from_R_', dv, '_all.csv', sep=''))
 }
 

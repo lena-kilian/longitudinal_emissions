@@ -86,9 +86,15 @@ for year in years:
     age = age.mean(axis=0, level=0).rename(columns = {'a005p':'mean_age'})
     
     # sex
+    # all
+    temp2 = temp[['case', 'a004', 'a005p']]
+    temp2 = temp2.groupby(['case', 'a004'])[['a005p']].count().unstack(level='a004').fillna(0)\
+        .droplevel(axis=1, level=0).rename(columns={1:'No_male', 2:'No_female'})
+    temp2['fraction_female'] = temp2['No_female'] / temp2.sum(1)
+    sex = cp.copy(temp2)
     # adults
-    sex = temp[['case', 'a004', 'a005p']]
-    temp2 = sex.loc[sex['a005p'] >= 18].groupby(['case', 'a004']).count().unstack(level='a004').fillna(0)\
+    temp2 = temp[['case', 'a004', 'a005p']]
+    temp2 = temp2.loc[temp2['a005p'] >= 18].groupby(['case', 'a004']).count().unstack(level='a004').fillna(0)\
         .droplevel(axis=1, level=0).rename(columns={1:'No_adult_male', 2:'No_adult_female'})
     temp2['fraction_female_adults'] = temp2['No_adult_female'] / temp2.sum(1)
     sex = sex.join(temp2)
@@ -97,12 +103,7 @@ for year in years:
     temp2 = temp2.loc[temp2['a005p'] < 18].groupby(['case', 'a004']).count().unstack(level='a004').fillna(0)\
         .droplevel(axis=1, level=0).rename(columns={1:'No_children_male', 2:'No_children_female'})
     temp2['No_children'] = temp2['No_children_male'] + temp2['No_children_female']
-    sex = sex.set_index('case').join(temp2)
-    # all
-    temp2 = sex.groupby(['case', 'a004'])[['a005p']].count().unstack(level='a004').fillna(0)\
-        .droplevel(axis=1, level=0).rename(columns={1:'No_male', 2:'No_female'})
-    temp2['fraction_female'] = temp2['No_female'] / temp2.sum(1)
-    sex = sex.join(temp2).mean(axis=0, level=0).drop(['a004', 'a005p'], axis=1)
+    sex = sex.join(temp2, how='left').fillna(0)
 
     
     # emission data

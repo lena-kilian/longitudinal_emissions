@@ -57,7 +57,6 @@ for year in years:
     q = ps.Quantiles(people[year]['pc_income'], k=10)
     people[year]['income_group'] = people[year]['pc_income'].map(q)
 
-
 #######################
 # Lineplots all years #
 #######################
@@ -75,6 +74,11 @@ for year in years:
     temp['year'] = year
     data = data.append(temp)
     print(year)
+# add 2020 data
+temp = pd.read_csv(wd + 'temp_2020_results.csv').rename(columns={'cats':'Product Category'})
+temp['year'] = 2020
+data = data.append(temp)
+# clean data
 data['year'] = pd.to_datetime(data['year'], format="%Y")
 data = data.sort_values('Product Category')
     
@@ -94,10 +98,10 @@ data_pct = data_pct.apply(lambda x: x/values_01*100).stack().reset_index()
 
 fig, ax = plt.subplots(figsize=(7.5, 5))
 sns.lineplot(ax=ax, data=data_pct, x='year', y='ghg', hue='Product Category')
-ax.set_ylabel('Percentage change in ' + axis + ' compared to 2001'); ax.set_xlabel('Year')
+ax.set_ylabel('Percentage of ' + axis + ' compared to 2001'); ax.set_xlabel('Year')
 plt.legend(bbox_to_anchor=(1.6, 0.75))
 plt.axhline(y=100, linestyle=':', color='k', lw=0.5)
-plt.ylim(50,150)
+plt.ylim(20,130)
 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_pct.png',
             bbox_inches='tight', dpi=300)
 plt.show()
