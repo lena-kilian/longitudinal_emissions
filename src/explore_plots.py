@@ -21,7 +21,6 @@ pop = 'no people'
 
 axis = 'tCO$_{2}$e / capita'
 
-
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
 cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
