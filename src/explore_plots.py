@@ -3,7 +3,7 @@
 """
 Created on Tue Jan 18 2021
 
-Plots for all years
+Plots for all years (2001-2019)
 
 @author: lenakilian
 """
