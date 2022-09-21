@@ -3,7 +3,7 @@
 """
 Created on Tue Jan 18 2021
 
-Plots for all years 
+Plots for all years (2001-2019)
 
 @author: lenakilian
 """
@@ -20,7 +20,6 @@ import pysal as ps
 pop = 'no people'
 
 axis = 'tCO$_{2}$e / capita'
-
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
