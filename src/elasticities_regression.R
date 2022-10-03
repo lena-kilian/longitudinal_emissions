@@ -26,11 +26,11 @@ results <- data.frame()
 product_list <- distinct(dplyr::select(data, Product))$Product
 for (item in c('income_group', 'composition of household', 'age_group')){
   for (pt in product_list){
-    for (yr in c(2007, 2009)){
+    for (yr in c(2007)){#, 2009)){
       temp <- data
       temp['group'] <- temp[item]
       group_list <- distinct(dplyr::select(temp, group))$group
-      temp2 <- temp %>% filter(Product == pt & year == yr)
+      temp2 <- temp %>% filter(Product == pt)# & year == yr)
       mod <- lm(ln_ghg ~ ln_income, data = temp2)
       temp3 <- data.frame(group_var = item, group = 'All households', product = pt, year = yr, 
                           elasticity = mod$coefficients['ln_income'], ci_low = confint(mod)[2], ci_up = confint(mod)[4])

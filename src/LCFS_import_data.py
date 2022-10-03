@@ -17,7 +17,6 @@ Import hhld expenditure data and adjust physical units 2001-2018
 import pandas as pd
 import LCFS_import_data_function as lcfs_import
 import copy as cp
-import pickle
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
