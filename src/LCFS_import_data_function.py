@@ -81,6 +81,23 @@ def import_lcfs(year, dvhh_file, dvper_file):
     for i in range(len(hhd_code)):
         useful_data[hhd_name[i]] = dvhh[hhd_code[i]]
         
+            
+    # add person specific variables
+    temp = dvper[['person', 'a002', 'a005p']].rename(columns={'a002':'Relationship to HRP', 'a005p':'Age'})
+    mean_age_adults = temp.loc[temp['Age'] >= 18].mean(axis=0, level=0)['Age']
+    mean_age_minors = temp.loc[temp['Age'] < 18].mean(axis=0, level=0)['Age']
+    mean_age_all = temp[['Age']].mean(axis=0, level=0)['Age']
+    temp['Relationship to HRP'] = temp['Relationship to HRP']\
+        .map({0:'HRP', 1:'Partner', 2:'Child (Minor)', 3: 'Son/Daughter-in-law', 4: 'Parent/Guardian', 5:'Father/Mother-in-law',
+              6:'Sibling', 7:'Grandchild', 8:'Other Relative', 9:'Non-Relative'})
+    temp.loc[(temp['Relationship to HRP'] == 'Child (Minor)') & (temp['Age'] >= 18), 'Relationship to HRP'] = 'Child (Adult)'
+    hhd_type = temp.reset_index().groupby(['case', 'Relationship to HRP']).count()[['person']]\
+        .unstack('Relationship to HRP').fillna(0).droplevel(axis=1, level=0).drop('HRP', axis=1)
+    hhd_type['age_adults_mean'] = mean_age_adults
+    hhd_type['age_minors_mean'] = mean_age_minors
+    hhd_type['age_all_mean'] = mean_age_all
+    useful_data = useful_data.join(hhd_type)
+        
     # add family information
     family_code = ['a016','a017', 'a018', 
                    'a020', 'a021', 'a022', 'a023', 'a024', 'a025', 'a026', 'a027', 
