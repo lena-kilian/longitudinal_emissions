@@ -37,9 +37,9 @@ for year in years:
     rent[str(year)] = rent[str(year)].set_index('case')
         
 for year in years:
-    file_dvhh = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
-    file_dvper = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
-    hhdspend[year] = lcfs_import.import_lcfs(year, file_dvhh, file_dvper).drop_duplicates()
+    dvhh_file = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
+    dvper_file = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
+    hhdspend[year] = lcfs_import.import_lcfs(year, dvhh_file, dvper_file).drop_duplicates()
     hhdspend[year] = hhdspend[year].reset_index()
     hhdspend[year].columns = [x.lower() for x in hhdspend[year].columns]
     hhdspend[year] = hhdspend[year].set_index('case')
