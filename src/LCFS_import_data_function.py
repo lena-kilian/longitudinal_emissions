@@ -24,11 +24,13 @@ def import_lcfs(year, dvhh_file, dvper_file):
     idx['hhld']['new_name'] = ['weight', 'age HRP', 'sex HRP']
     idx['hhld']['dict'] = dict(zip(idx['hhld']['to_keep'], idx['hhld']['new_name']))
     
-    dvhh = pd.read_csv(dvhh_file, sep='\t', index_col=0)
-    dvper = pd.read_csv(dvper_file, sep='\t', index_col=0)
+    dvhh = pd.read_csv(dvhh_file, sep='\t', index_col=None)
+    dvper = pd.read_csv(dvper_file, sep='\t', index_col=None)
     
     dvhh.columns = dvhh.columns.str.lower()
     dvper.columns = dvper.columns.str.lower()
+    
+    dvhh = dvhh.set_index('case'); dvper = dvper.set_index('case')
     
     owned_prop = np.zeros(shape = len(dvhh))
     for n in range (1,len(dvhh)):
@@ -83,20 +85,24 @@ def import_lcfs(year, dvhh_file, dvper_file):
         
             
     # add person specific variables
-    temp = dvper[['person', 'a002', 'a005p']].rename(columns={'a002':'Relationship to HRP', 'a005p':'Age'})
-    mean_age_adults = temp.loc[temp['Age'] >= 18].mean(axis=0, level=0)['Age']
-    mean_age_minors = temp.loc[temp['Age'] < 18].mean(axis=0, level=0)['Age']
-    mean_age_all = temp[['Age']].mean(axis=0, level=0)['Age']
+    temp = dvper[['person', 'a002', 'a005p']].rename(columns={'a002':'Relationship to HRP', 'a005p':'Age'}).apply(lambda x: pd.to_numeric(x, errors='coerce'))
+    mean_age_adults = temp.loc[temp['Age'] >= 18].mean(axis=0, level=0, skipna=True)['Age']
+    mean_age_minors = temp.loc[temp['Age'] < 18].mean(axis=0, level=0, skipna=True)['Age']
+    mean_age_all = temp[['Age']].mean(axis=0, level=0, skipna=True)['Age']
     temp['Relationship to HRP'] = temp['Relationship to HRP']\
         .map({0:'HRP', 1:'Partner', 2:'Child (Minor)', 3: 'Son/Daughter-in-law', 4: 'Parent/Guardian', 5:'Father/Mother-in-law',
-              6:'Sibling', 7:'Grandchild', 8:'Other Relative', 9:'Non-Relative'})
+              6:'Sibling', 7:'Grandchild (Minor)', 8:'Other Relative (Minor)', 9:'Non-Relative (Minor)'})
     temp.loc[(temp['Relationship to HRP'] == 'Child (Minor)') & (temp['Age'] >= 18), 'Relationship to HRP'] = 'Child (Adult)'
+    temp.loc[(temp['Relationship to HRP'] == 'Non-Relative (Minor)') & (temp['Age'] >= 18), 'Relationship to HRP'] = 'Non-Relative (Adult)'
+    temp.loc[(temp['Relationship to HRP'] == 'Grandchild (Minor)') & (temp['Age'] >= 18), 'Relationship to HRP'] = 'Grandchild (Adult)'
+    temp.loc[(temp['Relationship to HRP'] == 'Other Relative (Minor)') & (temp['Age'] >= 18), 'Relationship to HRP'] = 'Other Relative (Adult)'
+    
     hhd_type = temp.reset_index().groupby(['case', 'Relationship to HRP']).count()[['person']]\
         .unstack('Relationship to HRP').fillna(0).droplevel(axis=1, level=0).drop('HRP', axis=1)
     hhd_type['age_adults_mean'] = mean_age_adults
     hhd_type['age_minors_mean'] = mean_age_minors
     hhd_type['age_all_mean'] = mean_age_all
-    useful_data = useful_data.join(hhd_type)
+    useful_data = useful_data.join(hhd_type, how='left')
         
     # add family information
     family_code = ['a016','a017', 'a018', 

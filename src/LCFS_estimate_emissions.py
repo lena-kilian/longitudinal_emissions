@@ -102,6 +102,32 @@ for year in years + ['2007_cpi', '2009_cpi']:
     people[year].loc[(people[year]['new_desc'] == '3+ adults (18-44)') & 
                      (people[year]['age of oldest person in household - anonymised'] < 30), 'composition of household'] = 203
     
+    # Classify household types
+"""
+check = pd.DataFrame(columns=['count'])
+relatives = ['child (adult)', 'child (minor)', 'grandchild (minor)', 'grandchild (adult)', 
+             'non-relative (minor)', 'non-relative (adult)', 'other relative (minor)', 'other relative (adult)', 'partner', 'sibling', 
+             'son/daughter-in-law', 'father/mother-in-law', 'people aged <18']
+for year in years:
+    temp = people[year][relatives + ['parent/guardian', ]]
+    for item in relatives:
+        temp.loc[temp[item] > 0, item] = True
+        temp.loc[temp[item] == 0, item] = False
+    temp['count'] = 1
+    check = check.append(temp)
+
+check = check.groupby(relatives + ['parent/guardian']).count().sort_values('count', ascending=False).reset_index()
+check.columns = [x.replace('/', '/\n').replace('(', '\n(') for x in check.columns]
+
+
+check2 = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp3_lookup.xlsx', sheet_name='hhd_type')
+check2 = check2.groupby('hhd_type2').sum()[['count']]
+"""        
+    
+    
+    
+    
+    
     # OECD household equivalent scales
     # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
     temp = cp.copy(people[year])

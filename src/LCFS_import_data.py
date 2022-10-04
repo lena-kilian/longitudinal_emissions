@@ -39,6 +39,7 @@ for year in years:
     dvhh_file = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
     dvper_file = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
     hhdspend[year] = lcfs_import.import_lcfs(year, dvhh_file, dvper_file).drop_duplicates()
+    print(year)
     hhdspend[year] = hhdspend[year].reset_index()
     hhdspend[year].columns = [x.lower() for x in hhdspend[year].columns]
     hhdspend[year] = hhdspend[year].set_index('case')
