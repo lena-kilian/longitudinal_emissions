@@ -6,6 +6,11 @@ Created on Tue May  5 14:19:05 2020
 Functions to attach the LCFS to carbon emissions, based on code by Anne Owen
 
 @author: lenakilian
+
+Before this run:
+    None
+    
+Next run: LCFS_import_data.py
 """
 
 import numpy as np
@@ -130,7 +135,9 @@ def import_lcfs(year, dvhh_file, dvper_file):
     useful_data['Males aged 5-15'] = useful_data['Males aged 5-17'] - useful_data['Males aged 16-17']
     useful_data['Females aged 5-15'] = useful_data['Females aged 5-17'] - useful_data['Females aged 16-17']
     useful_data['People aged 5-15'] = useful_data['People aged 5-17'] - useful_data['People aged 16-17']
-    useful_data = useful_data.drop(['Males aged 5-17', 'Females aged 5-17', 'People aged 5-17'], axis=1)        
+    
+    useful_data['people aged <18'] = useful_data['People aged <2'] + useful_data['People aged 2-4'] + useful_data['People aged 5-17']
+    useful_data['no_adults'] = useful_data['no people'] - useful_data['people aged <18']
         
     if year < 2005:
         useful_data['rooms in accommodation'] = dvhh['a114']

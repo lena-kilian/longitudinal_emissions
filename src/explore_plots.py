@@ -6,68 +6,37 @@ Created on Tue Jan 18 2021
 Plots for all years (2001-2019)
 
 @author: lenakilian
+
+Before this run:
+    1. LCFS_import_data_function.py
+    2. LCFS_import_data.py
+    3. LCFS_estimate_emissions.py
+    4. expand_to_UK_pop.py
 """
 
 import pandas as pd
 import copy as cp
 import seaborn as sns
 import matplotlib.pyplot as plt
-import numpy as np
-import LCFS_import_data_function as lcfs_import
-import pysal as ps
+import pickle
 
 
-pop = 'no people'
+
+
+#[['case', 'hhld_oecd_equ', 'hhld_oecd_mod', 'no people', 'no people <18', 'no_adults',
+#     'hhd_type', 'pc_income', 'income_group', 'income anomymised', 'age_hrp', 'age_group_hrp', 'rooms in accommodation']]
 
 axis = 'tCO$_{2}$e / capita'
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
-cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
-cat_lookup['ccp_code'] = [x.split(' ')[0] for x in cat_lookup['ccp']]
-cat_dict = dict(zip(cat_lookup['ccp_code'], cat_lookup['Category']))
-cat_dict['pc_income'] = 'pc_income'
+plt.rcParams.update({'font.family':'Times New Roman', 'font.size':11})
 
 years = list(range(2001, 2020))
 
-lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
-                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020']))
-
-plt.rcParams.update({'font.family':'Times New Roman', 'font.size':11})
-
 # import data
-hhd_ghg = {}; pc_ghg = {}; people = {}; hhd_ghg_2007m = {}; pc_ghg_2007m= {}
-for year in years:
-    file_dvhh = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvhh_ukanon.tab'
-    file_dvper = wd + 'data/raw/LCFS/' + lcf_years[year] + '/tab/' + lcf_years[year] + '_dvper_ukanon.tab'
-    income = lcfs_import.import_lcfs(year, file_dvhh, file_dvper).drop_duplicates()
-    income.columns = [x.lower() for x in income.columns]
-    income = income[['income anonymised']].rename(columns={'income anonymised':'hhld_income'})
-    
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index(['case'])
-    pc_ghg[year] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year][pop])
-    
-    people[year] = hhd_ghg[year].loc[:,:'1.1.1.1'].iloc[:,:-1].join(income[['hhld_income']])
-    people[year]['pc_income'] = people[year]['hhld_income'] / people[year][pop]
-    people[year]['population'] = people[year][pop] * people[year]['weight']
-    
-    q = ps.Quantiles(people[year]['pc_income'], k=10)
-    people[year]['income_group'] = people[year]['pc_income'].map(q)
-    
-    people[year]['age_group_hrp'] = 'Other'
-    for i in [[18, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79]]:
-        people[year].loc[people[year]['age hrp'] >= i[0], 'age_group_hrp'] = str(i[0]) + '-' + str(i[1])
-    people[year].loc[people[year]['age hrp'] >= 80, 'age_group_hrp'] = '80 or older'
-    
-    people[year]['gor modified'] = people[year]['gor modified']\
-        .map({1:'North East', 2:'North West and Merseyside', 3:'Yorkshire and the Humber', 4:'East Midlands', 5:'West Midlands',
-              6:'Eastern', 7:'London', 8:'South East', 9:'South West', 10:'Wales', 11:'Scotland', 12:'Northern Ireland'})
-    people[year]['income_group'] = people[year]['income_group']\
-        .map(dict(zip(list(range(10)), ['Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest'])))
-        
-    people[year]['people aged 17 or younger'] = people[year][['people aged <2', 'people aged 2-4', 'people aged 5-15', 'people aged 16-17']].sum(1)
-    people[year]['people aged 60 or older'] = people[year][['people aged 60-64', 'people aged 65-69', 'people aged >69']].sum(1)     
-        
+hhd_ghg_uk = pickle.load(open(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_population.p', 'rb'))
+
 
 #######################
 # Lineplots all years #
@@ -77,7 +46,7 @@ for year in years:
 data = pd.DataFrame(columns=['year', 'Product Category', 'ghg'])
     
 for year in years:
-    temp = pc_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
+    temp = hhd_ghg_uk[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
     temp = temp.rename(columns=cat_dict).sum(axis=1, level=0).join(people[year][[pop]])
     temp.loc[:,:'Air transport'] = temp.loc[:,:'Air transport'].apply(lambda x: x*temp[pop])
     temp = pd.DataFrame(temp.sum(0)).reset_index().rename(columns={'index':'Product Category', 0:'ghg'})
