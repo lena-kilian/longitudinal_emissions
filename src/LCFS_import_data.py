@@ -8,7 +8,9 @@ Import hhld expenditure data and adjust physical units 2001-2018
 @author: lenakilian
 
 Before this run:
-    1. LCFS_import_data_function.py
+    1. LCFS_PhysicalUnits_Flights.py
+    2. LCFS_PhysicalUnits_Rent.py
+    3. LCFS_import_data_function.py
     
 Next run: LCFS_estimate_emissions.py
 """
@@ -64,7 +66,7 @@ for year in years:
     
     # adjust to physical units
     # flights
-    flights = cp.copy(flights_og[str(year)])
+    flights = cp.copy(flights_og[str(year)][['7.3.4.1_proxy', '7.3.4.2_proxy']])
     flights = flights.rename(columns={'7.3.4.1_proxy':'7.3.4.1', '7.3.4.2_proxy':'7.3.4.2'})
     hhdspend[year] = hhdspend[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
     
@@ -126,6 +128,8 @@ gas_elec = gas_elec.set_index([0, 1]).loc['Domestic'].T.set_index('Year').rename
 
 hhdspend_cpi = {}
 
+flights_ref_year = cp.copy(flights_og[str(ref_year)])
+
 cpi_years = cp.copy(years)
 cpi_years.remove(ref_year)
 for year in [ref_year] + cpi_years: # need to run ref_year first, to have the data to be used in next iteratino(s)
@@ -144,17 +148,9 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
         cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP4_index']))
     
     for item in hhdspend_cpi[year].loc[:,'1.1.1.1':'12.5.3.5'].columns:
-        hhdspend_cpi[year][item] = hhdspend_cpi[year][item] * (float(cpi.loc[cpi_dict[item], str(year)]) / 100)
+        hhdspend_cpi[year][item] = hhdspend_cpi[year][item] * (100 / float(cpi.loc[cpi_dict[item], str(year)])) # check again that this is correct
     
     # adjust to physical units
-    # flights
-    flights = cp.copy(flights_og[str(year)])
-    flights = flights.join(hhdspend_cpi[year][['7.3.4.1', '7.3.4.2']])
-    for item in ['7.3.4.1', '7.3.4.2']:
-        total_proxy = flights[item + '_proxy'].sum()
-        flights[item] = (flights[item + '_proxy'] /  total_proxy) * flights[item].sum()
-    hhdspend_cpi[year] = hhdspend_cpi[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
-    
     # rent
     rent = cp.copy(rent_og[str(year)])
     rent = rent.join(hhdspend_cpi[year][['4.1.1', '4.1.2']])
@@ -172,11 +168,37 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
     # adjust totals to new total
     hhdspend_cpi[year]['4.4.1'] = (hhdspend_cpi[year]['4.4.1'] / hhdspend_cpi[year]['4.4.1'].sum()) * total_spend_new_elec 
     hhdspend_cpi[year]['4.4.2'] = (hhdspend_cpi[year]['4.4.2'] / hhdspend_cpi[year]['4.4.2'].sum()) * total_spend_new_gas
-    hhdspend_cpi[year] = hhdspend_cpi[year][order]
     
+    # flights
+    flights = cp.copy(flights_og[str(year)])
+    flights = flights.join(hhdspend_cpi[year][['7.3.4.1', '7.3.4.2']], lsuffix='_og').join(flights_ref_year, rsuffix='_' + str(ref_year))
+    
+    total_domestic = flights['Domestic'].sum() * flights['7.3.4.1_' + str(ref_year)].sum() / flights['Domestic_' + str(ref_year)].sum()
+    total_international = flights['International'].sum() * flights['7.3.4.2_' + str(ref_year)].sum() / flights['International_' + str(ref_year)].sum()
+    
+    flights['7.3.4.1'] = flights['Domestic'] / flights['Domestic'].sum() * total_domestic
+    flights['7.3.4.2'] = flights['International'] / flights['International'].sum() * total_international
+    
+    hhdspend_cpi[year] = hhdspend_cpi[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
+    
+    # clean data
+    hhdspend_cpi[year] = hhdspend_cpi[year][order]
     hhdspend_cpi[year].index.name = 'case'
     hhdspend_cpi[year] = hhdspend_cpi[year].reset_index()
     
     hhdspend_cpi[year].to_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '_wCPI_ref' + str(ref_year) + '.csv')
     
     print('Year ' + str(year) + ' with CPI completed')
+
+
+check = pd.DataFrame(index=[1])
+for year in years:
+    temp = hhdspend_cpi[year][['7.3.4.1']]
+    temp.columns = [str(year) + '_' + x for x in temp.columns]
+    check = check.join(temp, how='outer')
+for year in years:
+    temp = hhdspend_cpi[year][['7.3.4.2']]
+    temp.columns = [str(year) + '_' + x for x in temp.columns]
+    check = check.join(temp, how='outer')
+    
+check_sum = check.sum()

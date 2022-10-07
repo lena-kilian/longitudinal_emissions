@@ -11,20 +11,14 @@ Before this run:
     1. LCFS_import_data_function.py
     2. LCFS_import_data.py
     3. LCFS_estimate_emissions.py
-    4. expand_to_UK_pop.py
+    4. emission_summary.py
 """
 
 import pandas as pd
 import copy as cp
 import seaborn as sns
 import matplotlib.pyplot as plt
-import pickle
 
-
-
-
-#[['case', 'hhld_oecd_equ', 'hhld_oecd_mod', 'no people', 'no people <18', 'no_adults',
-#     'hhd_type', 'pc_income', 'income_group', 'income anomymised', 'age_hrp', 'age_group_hrp', 'rooms in accommodation']]
 
 axis = 'tCO$_{2}$e / capita'
 
@@ -34,60 +28,61 @@ plt.rcParams.update({'font.family':'Times New Roman', 'font.size':11})
 
 years = list(range(2001, 2020))
 
+vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 
+            'Private and public road transport', 'Air transport', 
+            'Recreation, culture, and clothing', 'Other consumption',
+            'Total']
+
 # import data
-hhd_ghg_uk = pickle.load(open(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_population.p', 'rb'))
+data_ghg = pd.read_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')
+
+data_allyears = data_ghg.loc[data_ghg['year'] == 'all'] 
+data_annual = data_ghg.loc[data_ghg['year'] != 'all'] 
+data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
 
 
-#######################
-# Lineplots all years #
-#######################
+############################
+# Lineplots all households #
+############################
 
-
-data = pd.DataFrame(columns=['year', 'Product Category', 'ghg'])
-    
-for year in years:
-    temp = hhd_ghg_uk[year].loc[:,'1.1.1.1':'12.5.3.5'].dropna(how='all')
-    temp = temp.rename(columns=cat_dict).sum(axis=1, level=0).join(people[year][[pop]])
-    temp.loc[:,:'Air transport'] = temp.loc[:,:'Air transport'].apply(lambda x: x*temp[pop])
-    temp = pd.DataFrame(temp.sum(0)).reset_index().rename(columns={'index':'Product Category', 0:'ghg'})
-    temp['ghg'] = temp['ghg'] / temp.iloc[-1, -1]
-    temp = temp.loc[temp['Product Category'] != pop]
-    temp['year'] = year
-    data = data.append(temp)
-    print(year)
-# add 2020 data
-temp = pd.read_csv(wd + 'temp_2020_results.csv').rename(columns={'cats':'Product Category'})
-temp['year'] = 2020
-data = data.append(temp)
-# clean data
-data['year'] = pd.to_datetime(data['year'], format="%Y")
-data = data.sort_values('Product Category')
+# All households
+data_plot = data_annual.loc[data_annual['group'] == 'Group all_households'].set_index(['year', 'cpi'])[vars_ghg[:-1]].stack()\
+    .reset_index().rename(columns={'level_2':'Product Category', 0:'ghg'})
     
 # Plot
 # Linegraph values
-fig, ax = plt.subplots(figsize=(7.5, 5))
-sns.lineplot(ax=ax, data=data.reset_index(), x='year', y='ghg', hue='Product Category', palette='colorblind')
-ax.set_ylabel(axis); ax.set_xlabel('Year')
-plt.legend(bbox_to_anchor=(1.6, 0.75))
-plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs.png', bbox_inches='tight', dpi=300)
-plt.show()
+for cpi in ['regular', 'with_cpi']:
+    temp = data_plot.loc[data_plot['cpi'] == cpi]
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+    sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', palette='colorblind')
+    ax.set_ylabel(axis); ax.set_xlabel('Year')
+    plt.legend(bbox_to_anchor=(1.6, 0.75))
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_' + cpi + '.png', bbox_inches='tight', dpi=300)
+    plt.show()
 
+
+check = data_plot.loc[data_plot['Product Category'] == 'Air transport'].set_index(['year', 'cpi', 'Product Category']).unstack(level='cpi')
 # Linegraph w/ percentage
-data_pct = data.set_index(['year', 'Product Category']).unstack(level=[0])
+data_pct = data_plot.set_index(['year', 'cpi', 'Product Category']).unstack(level=[0])
 values_01 = data_pct.iloc[:,0]
 data_pct = data_pct.apply(lambda x: x/values_01*100).stack().reset_index()
 
-fig, ax = plt.subplots(figsize=(7.5, 5))
-sns.lineplot(ax=ax, data=data_pct, x='year', y='ghg', hue='Product Category', palette='colorblind')
-ax.set_ylabel('Percentage of ' + axis + ' compared to 2001'); ax.set_xlabel('Year')
-plt.legend(bbox_to_anchor=(1.6, 0.75))
-plt.axhline(y=100, linestyle=':', color='k', lw=0.5)
-plt.ylim(20,130)
-plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_pct.png',
-            bbox_inches='tight', dpi=300)
-plt.show()
-
-
+for cpi in ['regular', 'with_cpi']:
+    temp = data_pct.loc[data_pct['cpi'] == cpi]
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+    sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', palette='colorblind')
+    ax.set_ylabel('Percentage of ' + axis + ' compared to 2001'); ax.set_xlabel('Year')
+    plt.legend(bbox_to_anchor=(1.6, 0.75))
+    plt.axhline(y=100, linestyle=':', color='k', lw=0.5)
+    if cpi == 'regular':
+        plt.ylim(20,130)
+    else:
+        plt.ylim(60, 180)
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_pct.png',
+                bbox_inches='tight', dpi=300)
+    plt.show()
+    
+"""
 #############################
 # Lineplots by demographics #
 #############################
@@ -245,3 +240,4 @@ for item in ['age_group_hrp', 'income_group', 'gor modified']:
     summary_all = summary_all.append(temp_all.reset_index())
 summary_all.columns = pd.MultiIndex.from_tuples(summary_all.columns.tolist())
 summary_all = summary_all.set_index([('group', ''), ('', 'var')])
+"""

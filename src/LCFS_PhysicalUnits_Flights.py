@@ -64,8 +64,6 @@ for year in years:
     
     flight_data[year]['7.3.4.1_proxy'] = (flight_data[year]['Domestic'] / flight_data[year]['Domestic'].sum()) * flight_data[year]['7.3.4.1'].sum()
     flight_data[year]['7.3.4.2_proxy'] = (flight_data[year]['International'] / flight_data[year]['International'].sum()) * flight_data[year]['7.3.4.2'].sum()        
-    
-    flight_data[year] = flight_data[year][['7.3.4.1_proxy', '7.3.4.2_proxy']]
 
 # save to file
 writer = pd.ExcelWriter(r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/processed/LCFS/Controls/flights_2001-2018.xlsx')

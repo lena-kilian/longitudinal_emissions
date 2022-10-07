@@ -34,15 +34,17 @@ cat_dict['pc_income'] = 'pc_income'
 
 # import data
 hhd_ghg = {}
-for year in list(range(2001, 2019)):
+for year in list(range(2001, 2020)):
     hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv').set_index('case')
     hhd_ghg[str(year) + '_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '_cpi.csv')
     
-    
+'''    
 # reduce product categories to reduce data size
 for year in list(hhd_ghg.keys()):
     hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
-    
+
+
+REMOVE THIS SECTION AND JUST CALCULATE WEIGHTED MEANS, SUMS, AND COUNTS - TOO MUCH PROCESSING POWER NEEDED
 # function to duplicate index
 def reindex_df(df, weight_col):
     """expand the dataframe to prepare for resampling
@@ -64,3 +66,32 @@ for year in list(hhd_ghg.keys()):
     hhd_ghg_uk[year] = df[['case']].merge(hhd_ghg[year].reset_index(), on=['case'])
     
 pickle.dump(hhd_ghg_uk, open(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_population.p', 'wb'))
+'''
+
+
+# CHECK
+
+
+check = pd.DataFrame(columns=['year', 'index'])    
+for year in list(hhd_ghg.keys()):
+    temp = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
+    temp['pop'] = temp['weight'] * temp['no people']
+    temp.loc[:,'Food and Drinks':'Air transport'] = temp.loc[:,'Food and Drinks':].apply(lambda x: x*temp['weight'])
+    #temp = temp.groupby('hhd_type').sum()
+    temp = pd.DataFrame(temp.sum()).T
+    temp = temp.loc[:,'Food and Drinks':'Air transport'].apply(lambda x: x/temp['pop'])
+    temp['year'] = int(str(year)[:4])
+    if str(year)[-3:] == 'cpi':
+        temp['cpi'] = 'with_cpi'
+    else:
+        temp['cpi'] = 'regular'
+    check = check.append(temp.reset_index())
+check = check.set_index(['year', 'cpi']).drop('index', axis=1)
+check['Total'] = check.sum(1)
+
+check2 = check.unstack(level='cpi').astype(float)
+#check2 = check.loc[[2007, 2009]].unstack(level=['year_int', 'year'])
+    
+    
+    
+    
