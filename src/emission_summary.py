@@ -35,7 +35,7 @@ vars_ghg = [ 'Food and Drinks', 'Other consumption', 'Recreation, culture, and c
 
 vars_weighted_means = ['age hrp', 'pc_income',  'age_adults_mean', 'age_minors_mean', 'age_all_mean']
 
-vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people aged <18', 'rooms in accommodation', ]
+vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people aged <18', 'rooms in accommodation']
     
     
 # import data
@@ -59,7 +59,7 @@ for year in list(hhd_ghg.keys()):
 
 # calculate weighted means
 results = pd.DataFrame(columns=['year'])
-for item in ['hhd_type', 'age_group_hrp', 'income_group', 'all']:
+for item in ['hhd_type', 'age_group_hrp', 'income_group', 'gor modified', 'all']:
     temp_data = pd.DataFrame(columns=[item])
     for year in list(hhd_ghg.keys()):
         # generate temp df
@@ -70,10 +70,15 @@ for item in ['hhd_type', 'age_group_hrp', 'income_group', 'all']:
         temp['year'] = str(year)
         temp_data = temp_data.append(temp) # save this to do all years combined
         # calculate weighted means
+        # household level
+        hhd_means = cp.copy(temp)[vars_hhd_level + ['weight', item]]
+        hhd_means[vars_hhd_level] = hhd_means[vars_hhd_level].apply(lambda x: x * hhd_means['weight'])
+        hhd_means = hhd_means.groupby(item).sum()
+        hhd_means[vars_hhd_level] = hhd_means[vars_hhd_level].apply(lambda x: x / hhd_means['weight'])
+        # person level
         mean = cp.copy(temp)
-        mean.loc[:,:'age_all_mean'] = mean.loc[:,:'age_all_mean'].apply(lambda x: x * mean['weight'])
+        mean.loc[:,:'age_all_mean'] = mean.loc[:,:'rooms in accommodation'].apply(lambda x: x * mean['weight'])
         mean = mean.groupby(item).sum()
-        hhd_means = mean.apply(lambda x: x / mean['weight'])[vars_hhd_level]
         mean = mean.apply(lambda x: x / mean['pop'])[vars_ghg + vars_weighted_means].join(hhd_means)
         mean['group_var'] = item
         mean['year'] = int(str(year)[:4])
@@ -93,10 +98,16 @@ for item in ['hhd_type', 'age_group_hrp', 'income_group', 'all']:
     temp_data['cpi'] = 'regular'
     temp_data.loc[temp_data['year'].str[-3:] == 'cpi', 'cpi'] = 'with_cpi'
     # repeat mean and count
+    # calculate weighted means
+    # household level
+    hhd_means = cp.copy(temp_data)[vars_hhd_level + ['weight', item]]
+    hhd_means[vars_hhd_level] = hhd_means[vars_hhd_level].apply(lambda x: x * hhd_means['weight'])
+    hhd_means = hhd_means.groupby(item).sum()
+    hhd_means[vars_hhd_level] = hhd_means[vars_hhd_level].apply(lambda x: x / hhd_means['weight'])
+    # person level
     mean = cp.copy(temp_data)
-    mean.loc[:,'Food and Drinks':'age_all_mean'] = mean.loc[:,'Food and Drinks':'age_all_mean'].apply(lambda x: x * mean['weight'])
+    mean.loc[:,'Food and Drinks':'rooms in accommodation'] = mean.loc[:,'Food and Drinks':'rooms in accommodation'].apply(lambda x: x * mean['weight'])
     mean = mean.groupby([item, 'cpi']).sum()
-    hhd_means = mean.apply(lambda x: x / mean['weight'])[vars_hhd_level]
     mean = mean.apply(lambda x: x / mean['pop'])[vars_ghg + vars_weighted_means].join(hhd_means)
     mean['group_var'] = item
     mean['year'] = 'all'
@@ -108,5 +119,19 @@ for item in ['hhd_type', 'age_group_hrp', 'income_group', 'all']:
     temp = mean.join(count).reset_index().rename(columns={item:'group'})
     # append to results df
     results = results.append(temp)
-    
+
+income_dict = dict(zip(['Group ' + str(x) for x in range(10)],
+                       ['Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']))
+results.loc[results['group_var'] == 'income_group', 'group'] = results.loc[results['group_var'] == 'income_group', 'group'].map(income_dict)
+
+region_dict = dict(zip(['Group ' + str(x) for x in range(1, 13)],
+                       ['North East', 'North West and Merseyside', 'Yorkshire and the Humber', 'East Midlands'	,
+                       'West Midlands', 'Eastern', 'London', 'South East', 'South West', 'Wales', 'Scotland', 'Northern Ireland']))
+results.loc[results['group_var'] == 'gor modified', 'group'] = results.loc[results['group_var'] == 'gor modified', 'group'].map(region_dict)
+
+results['group'] = results['group'].str.replace('Group ', '')
+
+
+
+
 results.to_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')

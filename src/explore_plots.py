@@ -15,9 +15,9 @@ Before this run:
 """
 
 import pandas as pd
-import copy as cp
 import seaborn as sns
 import matplotlib.pyplot as plt
+import copy as cp
 
 
 axis = 'tCO$_{2}$e / capita'
@@ -26,6 +26,8 @@ wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
 plt.rcParams.update({'font.family':'Times New Roman', 'font.size':11})
 
+ref_year = 2007
+
 years = list(range(2001, 2020))
 
 vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 
@@ -33,12 +35,41 @@ vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, li
             'Recreation, culture, and clothing', 'Other consumption',
             'Total']
 
+vars_ghg_dict = ['Food and\nDrinks', 'Housing, water\nand waste', 'Electricity, gas,\nliquid and\nsolid fuels', 
+                 'Private and\npublic road\ntransport', 'Air transport', 
+                 'Recreation,\nculture, and\nclothing', 'Other\nconsumption',
+                 'Total']
+
+group_dict = {'hhd_type':'Household Composition', 'age_group_hrp':'Age of HRP', 
+              'income_group':'Income Decile', 'all':'All'}
+
 # import data
 data_ghg = pd.read_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')
+data_ghg = data_ghg.loc[(data_ghg['group'] != '0') & (data_ghg['group'] != 'Other')]
+data_ghg['group'] = data_ghg['group']\
+    .str.replace('Other relative household', 'Other relatives')\
+        .str.replace('Single parent/guardian household', 'Single parent/\nguardian\nhousehold')\
+            .str.replace('Two parent/guardian household', 'Two parent/guardian\nhousehold')\
+                .str.replace(' with', '\nwith').str.replace('adult grand', 'adult\ngrand')
 
 data_allyears = data_ghg.loc[data_ghg['year'] == 'all'] 
 data_annual = data_ghg.loc[data_ghg['year'] != 'all'] 
 data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
+
+##################################
+# Calculate mean change per year #
+##################################
+
+mean_change = cp.copy(data_annual).set_index(['year', 'group_var', 'group', 'cpi'])[vars_ghg + ['pc_income']]\
+    .stack().unstack(level='year')
+mean_change.columns = [str(x)[:4] for x in mean_change.columns]
+keep = []
+for year in years[1:]:
+    name = str(year-1) + '-' + str(year)
+    keep.append(name)
+    mean_change[name] = mean_change[str(year)] - mean_change[str(year-1)]
+mean_change = mean_change[keep].mean(axis=1).unstack(level=None)
+
 
 
 ############################
@@ -46,7 +77,7 @@ data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
 ############################
 
 # All households
-data_plot = data_annual.loc[data_annual['group'] == 'Group all_households'].set_index(['year', 'cpi'])[vars_ghg[:-1]].stack()\
+data_plot = data_annual.loc[data_annual['group'] == 'all_households'].set_index(['year', 'cpi'])[vars_ghg[:-1]].stack()\
     .reset_index().rename(columns={'level_2':'Product Category', 0:'ghg'})
     
 # Plot
@@ -64,14 +95,14 @@ for cpi in ['regular', 'with_cpi']:
 check = data_plot.loc[data_plot['Product Category'] == 'Air transport'].set_index(['year', 'cpi', 'Product Category']).unstack(level='cpi')
 # Linegraph w/ percentage
 data_pct = data_plot.set_index(['year', 'cpi', 'Product Category']).unstack(level=[0])
-values_01 = data_pct.iloc[:,0]
-data_pct = data_pct.apply(lambda x: x/values_01*100).stack().reset_index()
+values_ref_year = data_pct[('ghg', str(ref_year) +'-01-01 00:00:00')]
+data_pct = data_pct.apply(lambda x: x/values_ref_year*100).stack().reset_index()
 
 for cpi in ['regular', 'with_cpi']:
     temp = data_pct.loc[data_pct['cpi'] == cpi]
     fig, ax = plt.subplots(figsize=(7.5, 5))
     sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', palette='colorblind')
-    ax.set_ylabel('Percentage of ' + axis + ' compared to 2001'); ax.set_xlabel('Year')
+    ax.set_ylabel('Percentage of ' + axis + ' compared to ' + str(ref_year)); ax.set_xlabel('Year')
     plt.legend(bbox_to_anchor=(1.6, 0.75))
     plt.axhline(y=100, linestyle=':', color='k', lw=0.5)
     if cpi == 'regular':
@@ -82,11 +113,159 @@ for cpi in ['regular', 'with_cpi']:
                 bbox_inches='tight', dpi=300)
     plt.show()
     
-"""
+
+############################
+# Barplots by demographics #
+############################
+
+# All Years
+
+# next to each other
+data_plot = cp.copy(data_allyears)
+for cpi in ['regular', 'with_cpi']:
+    for item in data_plot[['group_var']].drop_duplicates()['group_var']:
+        temp = data_plot.loc[(data_plot['group_var'] == item) & (data_plot['cpi'] == cpi)].set_index('group')[vars_ghg]\
+            .stack().rename(index=dict(zip(vars_ghg, vars_ghg_dict))).reset_index().\
+                rename(columns={'level_1':'Product Category', 0:'ghg'})
+        fig, ax = plt.subplots(figsize=(7.5, 5))
+        sns.barplot(ax=ax, data=temp, x='Product Category', y='ghg', hue='group', palette='colorblind')
+        ax.set_ylabel(axis); ax.set_xlabel('')
+        plt.xticks(rotation=90)
+        plt.legend(bbox_to_anchor=(1, 0.75))
+        plt.axvline(x=6.5, linestyle=':', color='k', lw=0.5)
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_HHDs_' + item + '_' + cpi + '.png',
+                    bbox_inches='tight', dpi=300)
+        plt.show()
+
+# stacked
+color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
+data_plot = cp.copy(data_allyears)
+for cpi in ['regular', 'with_cpi']:
+    for item in data_plot[['group_var']].drop_duplicates()['group_var']:
+        temp = data_plot.loc[(data_plot['group_var'] == item) & (data_plot['cpi'] == cpi)].set_index('group')
+        income = temp[['pc_income']]
+        temp = temp[vars_ghg[:-1]]
+        # make subplot
+        fig, ax1 = plt.subplots(figsize=(len(temp.index), 5))
+        # axis left
+        start = [0] * len(temp)
+        for i in range(len(temp.columns)):
+            prod = temp.columns[i]
+            height = temp[prod]
+            ax1.bar(bottom=start, height=height, x=temp.index, color=color_list[i])
+            start += height
+        ax1.set_ylabel(axis)
+        ax1.set_ylim(0, 30)
+        if item == 'income_group':
+            xloc = 1.1
+        elif item == 'hhd_type':
+            xloc = 1.63
+        else:
+            xloc = 1.65
+        plt.legend(temp.columns, bbox_to_anchor=(xloc, 1))
+        plt.xlabel(group_dict[item])
+        plt.xticks(rotation=90)
+        # axis right
+        ax2 = ax1.twinx()
+        ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
+        ax2.set_ylabel('Income per capita')
+        ax2.set_ylim(0, 600)
+        plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
+        # modify plot
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + item + '_' + cpi + '_allyears.png',
+                    bbox_inches='tight', dpi=300)
+        plt.show() 
+        
+# Individual Years
+# plots by years
+color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
+data_plot = cp.copy(data_annual)
+for year in years:
+    for cpi in ['regular', 'with_cpi']:
+        for item in data_plot[['group_var']].drop_duplicates()['group_var'][:-1]:
+            temp = data_plot.loc[(data_plot['group_var'] == item) & 
+                                 (data_plot['cpi'] == cpi) & 
+                                 (data_plot['year'] == str(year) + '-01-01 00:00:00')]\
+                .set_index('group')
+            income = temp[['pc_income']]
+            temp = temp[vars_ghg[:-1]]
+            # make subplot
+            fig, ax1 = plt.subplots(figsize=(len(temp.index), 5))
+            # axis left
+            start = [0] * len(temp)
+            for i in range(len(temp.columns)):
+                prod = temp.columns[i]
+                height = temp[prod]
+                ax1.bar(bottom=start, height=height, x=temp.index, color=color_list[i])
+                start += height
+            ax1.set_ylabel(axis)
+            ax1.set_ylim(0, 30)
+            if item == 'income_group':
+                xloc = 1.1
+            elif item == 'hhd_type':
+                xloc = 1.63
+            else:
+                xloc = 1.65
+            plt.legend(temp.columns, bbox_to_anchor=(xloc, 1))
+            plt.xlabel(group_dict[item])
+            plt.xticks(rotation=90)
+            # axis right
+            ax2 = ax1.twinx()
+            ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
+            ax2.set_ylabel('Income per capita')
+            ax2.set_ylim(0, 600)
+            plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
+            # modify plot
+            plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + item + '_' + cpi + '_' + str(year) +'.png',
+                        bbox_inches='tight', dpi=300)
+            plt.show()
+
+# plots by group
+color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
+data_plot = cp.copy(data_annual)
+for cpi in ['regular', 'with_cpi']:
+    for item in data_plot[['group']].drop_duplicates()['group']:
+        temp = data_plot.loc[(data_plot['group'] == item) & 
+                             (data_plot['cpi'] == cpi)].set_index('year')
+        group_var = temp['group_var'][0]
+        income = temp[['pc_income']]
+        temp = temp[vars_ghg[:-1]]
+        # make subplot
+        fig, ax1 = plt.subplots(figsize=(int(len(temp.index)/2), 5))
+        # axis left
+        start = [0] * len(temp)
+        for i in range(len(temp.columns)):
+            prod = temp.columns[i]
+            height = temp[prod]
+            ax1.bar(bottom=start, height=height, x=[str(x)[:4] for x in temp.index], color=color_list[i])
+            start += height
+        ax1.set_ylabel(axis)
+        ax1.set_ylim(0, 30)
+        if item == 'income_group':
+            xloc = 1.1
+        elif item == 'hhd_type':
+            xloc = 1.63
+        else:
+            xloc = 1.65
+        plt.legend(temp.columns, bbox_to_anchor=(xloc, 1))
+        plt.xlabel('Year')
+        # axis right
+        ax2 = ax1.twinx()
+        ax2.plot([str(x)[:4] for x in income.index], income['pc_income'], color='k', lw=2, linestyle='--')
+        ax2.set_ylabel('Income per capita')
+        ax2.set_ylim(0, 600)
+        plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
+        # modify plot
+        plt.title(group_dict[group_var] + ': ' + item.replace('\n', ' '))
+        name = item.replace('\n', '_').replace(' ', '_').replace('/', '_')
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + group_var + '_'  + name + '_' + cpi +'.png',
+                    bbox_inches='tight', dpi=300)
+        plt.show()
+
 #############################
 # Lineplots by demographics #
 #############################
-
+"""
 
 data = {}
 

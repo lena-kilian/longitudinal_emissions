@@ -76,7 +76,7 @@ for year in list(lcfs.keys()):
     people[year]['age_group_hrp'] = 'Other'
     for i in [[18, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79]]:
         people[year].loc[people[year]['age hrp'] >= i[0], 'age_group_hrp'] = str(i[0]) + '-' + str(i[1])
-    people[year].loc[people[year]['age hrp'] >= 80, 'age_group_hrp'] = '80 or older'
+    people[year].loc[people[year]['age hrp'] >= 80, 'age_group_hrp'] = '80+'
     
     # OECD household equivalent scales
     # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
