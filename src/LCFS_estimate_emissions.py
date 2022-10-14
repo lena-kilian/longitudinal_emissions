@@ -35,26 +35,13 @@ pop = 'no people' # change this to oecd equivalised scale if needed
 lcfs = {}
 people = {}
 
-
 for year in years:
     # regular
     lcfs[year] = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '.csv').set_index('case')
+    order = lcfs[year].columns
     # with cpi
-    temp = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '_wCPI_ref' + str(ref_year) + '.csv').set_index('case')
-    lcfs[str(year) + '_cpi'] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1].join(temp.loc[:,'1.1.1.1':'12.5.3.5'])
-
-check = pd.DataFrame(index=[1])
-for year in years:
-    temp = lcfs[str(year) + '_cpi'][['7.3.4.1']]
-    temp.columns = [str(year) + '_' + x for x in temp.columns]
-    check = check.join(temp, how='outer')
-for year in years:
-    temp = lcfs[str(year) + '_cpi'][['7.3.4.2']]
-    temp.columns = [str(year) + '_' + x for x in temp.columns]
-    check = check.join(temp, how='outer')
-    
-check_sum = check.sum()
-
+    lcfs[str(year) + '_cpi'] = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '_wCPI_ref' + str(ref_year) + '.csv')\
+        .set_index('case')[order]
 
 for year in list(lcfs.keys()):
     # separate sociodemographic variables

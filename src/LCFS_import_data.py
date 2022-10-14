@@ -189,16 +189,3 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
     hhdspend_cpi[year].to_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '_wCPI_ref' + str(ref_year) + '.csv')
     
     print('Year ' + str(year) + ' with CPI completed')
-
-
-check = pd.DataFrame(index=[1])
-for year in years:
-    temp = hhdspend_cpi[year][['7.3.4.1']]
-    temp.columns = [str(year) + '_' + x for x in temp.columns]
-    check = check.join(temp, how='outer')
-for year in years:
-    temp = hhdspend_cpi[year][['7.3.4.2']]
-    temp.columns = [str(year) + '_' + x for x in temp.columns]
-    check = check.join(temp, how='outer')
-    
-check_sum = check.sum()
