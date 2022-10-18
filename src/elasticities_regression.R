@@ -20,8 +20,9 @@ results <- data.frame()
 product_list <- distinct(dplyr::select(data, Product))$Product
 for (item in c('all', 'age_group_hrp', 'hhd_type', 'gor modified', 'income_group')){
   for (pt in product_list){
-    for (yr in seq(2001, 2019)){
-      for (cpi in c('cpi', 'regular')){
+    for (cpi in c('cpi', 'regular')){
+      # add results by year
+      for (yr in seq(2001, 2019)){
         yr_str = paste('Year', yr, sep='_')
         temp <- data
         temp['group'] <- temp[item]
@@ -35,11 +36,25 @@ for (item in c('all', 'age_group_hrp', 'hhd_type', 'gor modified', 'income_group
           temp3 <- data.frame(group_var = item, group = gp, product = pt, year = yr, cpi=cpi,
                               elasticity = mod$coefficients['ln_income'], ci_low = confint(mod)[2], ci_up = confint(mod)[4])
           results <- results %>% rbind(temp3)
-        }
-      }
-    }
-  }
-}
+        } # close group
+      } # close year
+      # add result for all years combined
+      temp <- data
+      temp['group'] <- temp[item]
+      temp2 <- temp %>% 
+        filter(Product == pt & cpi == cpi) %>%
+        mutate(group = ifelse(group == '0', 'NA', group))
+      group_list <- distinct(dplyr::select(temp2, group))$group
+      for (gp in group_list){
+        temp4 <- temp2 %>% filter(group == gp)
+        mod <- lm(ln_ghg ~ ln_income, data = temp4)
+        temp3 <- data.frame(group_var = item, group = gp, product = pt, year = 'all', cpi=cpi,
+                            elasticity = mod$coefficients['ln_income'], ci_low = confint(mod)[2], ci_up = confint(mod)[4])
+        results <- results %>% rbind(temp3)
+      } # close group
+    } # close cpi
+  } # close product
+} # close item
 
 
 results %>% write_csv('data/processed/GHG_Estimates_LCFS/Elasticity_regression_results.csv')
