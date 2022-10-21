@@ -51,7 +51,13 @@ for year in years:
     lcfs[year].columns = [x.lower() for x in lcfs[year].columns]
     lcfs[year] = lcfs[year].set_index('case')    
 
+    
+# add 2020 data
+lcfs[2020] = pd.read_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv', index_col=[0, 1], header=[0]).fillna(0)
+lcfs[2020]['income anonymised'] = lcfs[2020]['Mean annual income'] / (365/7)
+lcfs[2020].columns = [str(x) for x in lcfs[2020].columns]
 
+years.append(2020)
 
 ###########
 # Regular #
@@ -64,18 +70,19 @@ for year in years:
     # save order of coicop cats    
     order = hhdspend[year].columns.tolist()
     
+    if year != 2020:
     # adjust to physical units
     # flights
-    flights = cp.copy(flights_og[str(year)][['7.3.4.1_proxy', '7.3.4.2_proxy']])
-    flights = flights.rename(columns={'7.3.4.1_proxy':'7.3.4.1', '7.3.4.2_proxy':'7.3.4.2'})
-    hhdspend[year] = hhdspend[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
-    
-    # rent
-    rent = cp.copy(rent_og[str(year)])
-    rent = rent.rename(columns={'4.1.1_proxy':'4.1.1', '4.1.2_proxy':'4.1.2'})
-    hhdspend[year] = hhdspend[year].drop(['4.1.1', '4.1.2'], axis = 1).join(rent[['4.1.1', '4.1.2']])
+        flights = cp.copy(flights_og[str(year)][['7.3.4.1_proxy', '7.3.4.2_proxy']])
+        flights = flights.rename(columns={'7.3.4.1_proxy':'7.3.4.1', '7.3.4.2_proxy':'7.3.4.2'})
+        hhdspend[year] = hhdspend[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
+        
+        # rent
+        rent = cp.copy(rent_og[str(year)])
+        rent = rent.rename(columns={'4.1.1_proxy':'4.1.1', '4.1.2_proxy':'4.1.2'})
+        hhdspend[year] = hhdspend[year].drop(['4.1.1', '4.1.2'], axis = 1).join(rent[['4.1.1', '4.1.2']])
 
-    hhdspend[year] = hhdspend[year][order]
+        hhdspend[year] = hhdspend[year][order]
     
     hhdspend[year].index.name = 'case'
     hhdspend[year] = hhdspend[year].reset_index()
@@ -150,15 +157,26 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
     for item in hhdspend_cpi[year].loc[:,'1.1.1.1':'12.5.3.5'].columns:
         hhdspend_cpi[year][item] = hhdspend_cpi[year][item] * (100 / float(cpi.loc[cpi_dict[item], str(year)])) # check again that this is correct
     
-    # adjust to physical units
-    # rent
-    rent = cp.copy(rent_og[str(year)])
-    rent = rent.join(hhdspend_cpi[year][['4.1.1', '4.1.2']])
-    for item in ['4.1.1', '4.1.2']:
-        total_proxy = rent[item + '_proxy'].sum()
-        rent[item] = (rent[item + '_proxy'] /  total_proxy) * rent[item].sum()
-    hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.1.1', '4.1.2'], axis = 1).join(rent[['4.1.1', '4.1.2']])
-    
+    if year != 2020:
+        # adjust to physical units
+        # rent
+        rent = cp.copy(rent_og[str(year)])
+        rent = rent.join(hhdspend_cpi[year][['4.1.1', '4.1.2']])
+        for item in ['4.1.1', '4.1.2']:
+            total_proxy = rent[item + '_proxy'].sum()
+            rent[item] = (rent[item + '_proxy'] /  total_proxy) * rent[item].sum()
+        hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.1.1', '4.1.2'], axis = 1).join(rent[['4.1.1', '4.1.2']])
+        
+        # flights
+        flights = cp.copy(flights_og[str(year)])
+        flights = flights.join(hhdspend_cpi[year][['7.3.4.1', '7.3.4.2']], lsuffix='_og').join(flights_ref_year, rsuffix='_' + str(ref_year))
+        
+        total_domestic = flights['Domestic'].sum() * flights['7.3.4.1_' + str(ref_year)].sum() / flights['Domestic_' + str(ref_year)].sum()
+        total_international = flights['International'].sum() * flights['7.3.4.2_' + str(ref_year)].sum() / flights['International_' + str(ref_year)].sum()
+        
+        flights['7.3.4.1'] = flights['Domestic'] / flights['Domestic'].sum() * total_domestic
+        flights['7.3.4.2'] = flights['International'] / flights['International'].sum() * total_international
+        
     # adjust gas (4.4.2) and electricity (4.4.1) to kwh ratio
     # generate multiplier compared to 2007
     multiplier = gas_elec.loc[year] / gas_elec.loc[ref_year]
@@ -169,18 +187,8 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
     hhdspend_cpi[year]['4.4.1'] = (hhdspend_cpi[year]['4.4.1'] / hhdspend_cpi[year]['4.4.1'].sum()) * total_spend_new_elec 
     hhdspend_cpi[year]['4.4.2'] = (hhdspend_cpi[year]['4.4.2'] / hhdspend_cpi[year]['4.4.2'].sum()) * total_spend_new_gas
     
-    # flights
-    flights = cp.copy(flights_og[str(year)])
-    flights = flights.join(hhdspend_cpi[year][['7.3.4.1', '7.3.4.2']], lsuffix='_og').join(flights_ref_year, rsuffix='_' + str(ref_year))
-    
-    total_domestic = flights['Domestic'].sum() * flights['7.3.4.1_' + str(ref_year)].sum() / flights['Domestic_' + str(ref_year)].sum()
-    total_international = flights['International'].sum() * flights['7.3.4.2_' + str(ref_year)].sum() / flights['International_' + str(ref_year)].sum()
-    
-    flights['7.3.4.1'] = flights['Domestic'] / flights['Domestic'].sum() * total_domestic
-    flights['7.3.4.2'] = flights['International'] / flights['International'].sum() * total_international
-    
     hhdspend_cpi[year] = hhdspend_cpi[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
-    
+
     # clean data
     hhdspend_cpi[year] = hhdspend_cpi[year][order]
     hhdspend_cpi[year].index.name = 'case'

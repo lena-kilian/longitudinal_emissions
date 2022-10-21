@@ -131,7 +131,29 @@ results.loc[results['group_var'] == 'gor modified', 'group'] = results.loc[resul
 
 results['group'] = results['group'].str.replace('Group ', '')
 
+# add 2020 data
+hhd_ghg[2020] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2020.csv')
+hhd_ghg['2020_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_2020_cpi.csv')
 
+group_dict = {'Average':'all_households', 
+              'income_decile_1':'Lowest', 'income_decile_2':'2nd', 'income_decile_3':'3rd', 'income_decile_4':'4th', 'income_decile_5':'5th', 
+              'income_decile_6':'6th', 'income_decile_7':'7th', 'income_decile_8':'8th', 'income_decile_9':'9th', 'income_decile_10':'Highest',
+              'age_group_18_29':'18-29', 'age_group_30_49':'30-39', 'age_group_50_64':'50-59', 'age_group_65_74':'60-69', 'age_group_75':'70-79'}
+              # 40-49, 80+
+
+for year in [2020, '2020_cpi']:
+    hhd_ghg[year]['year'] = 2020
+    if str(year)[-3:] == 'cpi':
+        hhd_ghg[year]['cpi'] = 'with_cpi'
+    else:
+        hhd_ghg[year]['cpi'] = 'regular'
+    hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
+    hhd_ghg[year] = hhd_ghg[year].rename(columns={'case':'group', 'COICOP4_code':'group_var'})
+    hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
+    hhd_ghg[year]['group'] = hhd_ghg[year]['group'].map(group_dict)
+    
+    hhd_ghg[year][vars_ghg] = hhd_ghg[year][vars_ghg].apply(lambda x: x/hhd_ghg[year]['no people'])
+    results = results.append(hhd_ghg[year])
 
 
 results.to_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')

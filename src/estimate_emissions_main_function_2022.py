@@ -253,6 +253,11 @@ def make_footprint(hhdspend, wd):
     total_Yhh_112 = make_Yhh_112(ukmrio['Y'], years, meta)
     
     coicop_exp_tot = expected_totals(hhdspend, years, concs_dict2, total_Yhh_112)
+    for year in years:
+        for i in range(len(coicop_exp_tot[year])):
+            item = coicop_exp_tot[year][i]
+            if np.isnan(item) == True:
+                coicop_exp_tot[year][i] = 0
 
     yhh_wide = make_y_hh_307(ukmrio['Y'], coicop_exp_tot, years, concs_dict2, meta)
     newY = make_new_Y(ukmrio['Y'], yhh_wide, meta, years)

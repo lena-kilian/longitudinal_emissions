@@ -20,7 +20,8 @@ import pandas as pd
 import estimate_emissions_main_function_2021 as estimate_emissions
 import copy as cp
 import pysal as ps
-
+import pickle
+import numpy as np
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -28,7 +29,7 @@ ref_year = 2007 # choose year which expenditure is adjusted to (by CPI)
 
 hhd_type_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp3_lookup.xlsx', sheet_name='hhd_type')
 
-years = list(range(2001, 2020))
+years = list(range(2001, 2021))
 pop = 'no people' # change this to oecd equivalised scale if needed
 
 # load LFC data
@@ -44,56 +45,72 @@ for year in years:
         .set_index('case')[order]
 
 for year in list(lcfs.keys()):
-    # separate sociodemographic variables
-    people[year] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1]
-    
-    # Classify household types
-    relatives = ['child (adult)', 'child (minor)', 'grandchild (minor)', 'grandchild (adult)', 
-                 'non-relative (minor)', 'non-relative (adult)', 'other relative (minor)', 'other relative (adult)', 'partner', 'sibling', 
-                 'son/daughter-in-law', 'father/mother-in-law', 'people aged <18']
-    temp = cp.copy(people[year][['parent/guardian'] + relatives])
-    for item in relatives:
-        temp.loc[temp[item] > 0, item] = True
-        temp.loc[temp[item] == 0, item] = False
-    temp = temp.merge(hhd_type_lookup, on=['parent/guardian'] + relatives)[['hhd_type']]
-    
-    people[year] = people[year].join(temp)
-    
-    # classify age range of hrp
-    people[year]['age_group_hrp'] = 'Other'
-    for i in [[18, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79]]:
-        people[year].loc[people[year]['age hrp'] >= i[0], 'age_group_hrp'] = str(i[0]) + '-' + str(i[1])
-    people[year].loc[people[year]['age hrp'] >= 80, 'age_group_hrp'] = '80+'
-    
-    # OECD household equivalent scales
-    # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
-    temp = cp.copy(people[year])
-    temp['<16'] =  temp['people aged <18'] - temp['people aged 16-17']
-    temp['16+'] = temp['no people'] - temp['<16']
-    temp['hhld_oecd_mod'] = 0
-    temp.loc[temp['16+'] > 0, 'hhld_oecd_mod'] = 1
-    temp['hhld_oecd_equ'] = temp['hhld_oecd_mod']
-    # OECD-modified scale
-    temp['hhld_oecd_mod'] = temp['hhld_oecd_mod'] + ((temp['16+'] - 1) * 0.5) + (temp['<16'] * 0.3)
-    people[year] = people[year].join(temp[['hhld_oecd_mod']])
-    # OECD equivalence scale
-    temp['hhld_oecd_equ'] = temp['hhld_oecd_equ'] + ((temp['16+'] - 1) * 0.7) + (temp['<16'] * 0.5)
-    people[year] = people[year].join(temp[['hhld_oecd_equ']])
-    
-    #
-    people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop]
-    q = ps.Quantiles(people[year]['pc_income'], k=10)
-    people[year]['income_group'] = people[year]['pc_income'].map(q)
+    if year not in [2020, '2020_cpi']:
+        # separate sociodemographic variables
+        people[year] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1]
+        
+        # Classify household types
+        relatives = ['child (adult)', 'child (minor)', 'grandchild (minor)', 'grandchild (adult)', 
+                     'non-relative (minor)', 'non-relative (adult)', 'other relative (minor)', 'other relative (adult)', 'partner', 'sibling', 
+                     'son/daughter-in-law', 'father/mother-in-law', 'people aged <18']
+        temp = cp.copy(people[year][['parent/guardian'] + relatives])
+        for item in relatives:
+            temp.loc[temp[item] > 0, item] = True
+            temp.loc[temp[item] == 0, item] = False
+        temp = temp.merge(hhd_type_lookup, on=['parent/guardian'] + relatives)[['hhd_type']]
+        
+        people[year] = people[year].join(temp)
+        
+        # classify age range of hrp
+        people[year]['age_group_hrp'] = 'Other'
+        for i in [[18, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79]]:
+            people[year].loc[people[year]['age hrp'] >= i[0], 'age_group_hrp'] = str(i[0]) + '-' + str(i[1])
+        people[year].loc[people[year]['age hrp'] >= 80, 'age_group_hrp'] = '80+'
+        
+        # OECD household equivalent scales
+        # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
+        temp = cp.copy(people[year])
+        temp['<16'] =  temp['people aged <18'] - temp['people aged 16-17']
+        temp['16+'] = temp['no people'] - temp['<16']
+        temp['hhld_oecd_mod'] = 0
+        temp.loc[temp['16+'] > 0, 'hhld_oecd_mod'] = 1
+        temp['hhld_oecd_equ'] = temp['hhld_oecd_mod']
+        # OECD-modified scale
+        temp['hhld_oecd_mod'] = temp['hhld_oecd_mod'] + ((temp['16+'] - 1) * 0.5) + (temp['<16'] * 0.3)
+        people[year] = people[year].join(temp[['hhld_oecd_mod']])
+        # OECD equivalence scale
+        temp['hhld_oecd_equ'] = temp['hhld_oecd_equ'] + ((temp['16+'] - 1) * 0.7) + (temp['<16'] * 0.5)
+        people[year] = people[year].join(temp[['hhld_oecd_equ']])
+        
+        #
+        people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop]
+        q = ps.Quantiles(people[year]['pc_income'], k=10)
+        people[year]['income_group'] = people[year]['pc_income'].map(q)
+    else:
+        lcfs[year] = lcfs[year].rename(columns={'Weighted average number of persons per household':'no people', 
+                                                'Weighted number of households (thousands)':'weight'})
+        people[year] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1].join(lcfs[year][['income anonymised']])
     
     # gather spend      
     lcfs[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].astype(float).apply(lambda x: x*lcfs[year]['weight'])
 
 # generate hhd emissions and multipliers only for regular years
-hhd_ghg, multipliers = estimate_emissions.make_footprint({y:lcfs[y] for y in years}, wd)
+hhd_ghg, multipliers = estimate_emissions.make_footprint({y:lcfs[y] for y in years[:-1]}, wd)
+
+
+##########
+## SAVE ##
+##########
  
 # save emissions using their own year multipliers
 for year in years:
-    hhd_ghg[year] = people[year].join(hhd_ghg[year])
+    if year != 2020:
+        hhd_ghg[year] = people[year].join(hhd_ghg[year])
+    else:
+        hhd_ghg[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].T
+        hhd_ghg[year][('multipliers', 'multipliers')] = multipliers[2019][['multipliers']]
+        hhd_ghg[year] = hhd_ghg[year].apply(lambda x: x*hhd_ghg[year][('multipliers', 'multipliers')]).drop(('multipliers', 'multipliers'), axis=1).T
+        hhd_ghg[year] = people[year].join(hhd_ghg[year])
     hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'] = hhd_ghg[year].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/hhd_ghg[year]['weight'])
     name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv'
     hhd_ghg[year].reset_index().to_csv(name)
@@ -110,4 +127,20 @@ for year in [str(y) + '_cpi' for y in years]:
     temp.to_csv(name)
     print(year +  ' with 2007 multipliers saved')
 
-    
+
+
+# do checks
+
+check = multipliers[2019]
+
+print('\n\n\n', lcfs[2019].loc[:,'1.1.1.1':'12.5.3.5'].sum(1).mean(), '\n\n\n', lcfs[2020].loc[:,'1.1.1.1':'12.5.3.5'].sum(1));
+
+print('\n\n\n', hhd_ghg[2019].loc[:,'1.1.1.1':'12.5.3.5'].sum(1).mean(), '\n\n\n', hhd_ghg[2020].loc[:,'1.1.1.1':'12.5.3.5'].sum(1));
+
+
+check['mean_2019'] = hhd_ghg[2019].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/ hhd_ghg[2019]['no people']).mean()
+check['mean_2020'] = hhd_ghg[2020].loc['Average', '1.1.1.1':'12.5.3.5'] / hhd_ghg[2020].loc['Average', '1.1.1.1':'12.5.3.5']
+
+check = check.fillna(0)
+
+check.sum()

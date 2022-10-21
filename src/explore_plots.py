@@ -28,7 +28,7 @@ plt.rcParams.update({'font.family':'Times New Roman', 'font.size':11})
 
 ref_year = 2007
 
-years = list(range(2001, 2020))
+years = list(range(2001, 2021))
 
 vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 
             'Private and public road transport', 'Air transport', 
@@ -60,6 +60,10 @@ data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
 # Calculate mean change per year #
 ##################################
 
+data_plot = data_annual.loc[(data_annual['group'] == 'all_households') & (data_annual['cpi'] == 'regular')]
+sns.barplot(data=data_plot, y='year', x='Total', hue='cpi')
+
+years = list(range(2001, 2020))
 # in tCO2e/capita
 mean_change = cp.copy(data_annual).set_index(['year', 'group_var', 'group', 'cpi'])[vars_ghg + ['pc_income']]\
     .stack().unstack(level='year')
