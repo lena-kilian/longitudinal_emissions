@@ -30,10 +30,10 @@ cat_dict = dict(zip(cat_lookup['ccp_code'], cat_lookup['Category']))
 cat_dict['pc_income'] = 'pc_income'
 
 
-vars_ghg = [ 'Food and Drinks', 'Other consumption', 'Recreation, culture, and clothing', 'Housing, water and waste', 
+vars_ghg = ['Food and Drinks', 'Other consumption', 'Recreation, culture, and clothing', 'Housing, water and waste', 
             'Electricity, gas, liquid and solid fuels', 'Private and public road transport', 'Air transport', 'Total']
 
-vars_weighted_means = ['age hrp', 'pc_income',  'age_adults_mean', 'age_minors_mean', 'age_all_mean']
+vars_weighted_means = ['age hrp', 'income anonymised',  'age_adults_mean', 'age_minors_mean', 'age_all_mean']
 
 vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people aged <18', 'rooms in accommodation']
     
@@ -59,7 +59,7 @@ for year in list(hhd_ghg.keys()):
 
 # calculate weighted means
 results = pd.DataFrame(columns=['year'])
-for item in ['hhd_type', 'age_group_hrp', 'income_group', 'gor modified', 'all']:
+for item in ['age_group_hrp', 'income_group', 'all']: #'hhd_type','gor modified', 
     temp_data = pd.DataFrame(columns=[item])
     for year in list(hhd_ghg.keys()):
         # generate temp df
@@ -131,6 +131,9 @@ results.loc[results['group_var'] == 'gor modified', 'group'] = results.loc[resul
 
 results['group'] = results['group'].str.replace('Group ', '')
 
+results['pc_income'] = results['income anonymised']
+results['income anonymised'] = results['pc_income'] * results['no people']
+
 # add 2020 data
 hhd_ghg[2020] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2020.csv')
 hhd_ghg['2020_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_2020_cpi.csv')
@@ -138,7 +141,7 @@ hhd_ghg['2020_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Househ
 group_dict = {'Average':'all_households', 
               'income_decile_1':'Lowest', 'income_decile_2':'2nd', 'income_decile_3':'3rd', 'income_decile_4':'4th', 'income_decile_5':'5th', 
               'income_decile_6':'6th', 'income_decile_7':'7th', 'income_decile_8':'8th', 'income_decile_9':'9th', 'income_decile_10':'Highest',
-              'age_group_18_29':'18-29', 'age_group_30_49':'30-39', 'age_group_50_64':'50-59', 'age_group_65_74':'60-69', 'age_group_75':'70-79'}
+              'age_group_18_29':'18-29', 'age_group_30_49':'30-49', 'age_group_50_64':'50-64', 'age_group_65_74':'65-74', 'age_group_75':'75+'}
               # 40-49, 80+
 
 for year in [2020, '2020_cpi']:
@@ -151,9 +154,14 @@ for year in [2020, '2020_cpi']:
     hhd_ghg[year] = hhd_ghg[year].rename(columns={'case':'group', 'COICOP4_code':'group_var'})
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     hhd_ghg[year]['group'] = hhd_ghg[year]['group'].map(group_dict)
+    hhd_ghg[year]['group_var'] = hhd_ghg[year]['group_var'].map({'All':'all', 'Age of HRP':'age_group_hrp', 'Income decile':'income_group'})
+    hhd_ghg[year]['pc_income'] = hhd_ghg[year]['income anonymised'] / hhd_ghg[year]['no people']
     
     hhd_ghg[year][vars_ghg] = hhd_ghg[year][vars_ghg].apply(lambda x: x/hhd_ghg[year]['no people'])
-    results = results.append(hhd_ghg[year])
-
+    idx = results.columns.tolist()
+    results = results.append(hhd_ghg[year])[idx]
+    
+results['hhd_income_scaled'] = results['income anonymised'] / results['income anonymised'].max() * 100
+results['pc_income_scaled'] = results['pc_income'] / results['pc_income'].max() * 100
 
 results.to_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')

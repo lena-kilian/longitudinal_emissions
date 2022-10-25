@@ -36,11 +36,12 @@ for year in years:
 # Extract flydest data and link to weights to estimate number of flights
 flight_data = {}; flight_total = {}; flight_exp = {}
 for year in years:
+    # also separate weight to ensure new totals are correctly weighted   
     if year < 2013:
-        flight_exp[year] = dvhh[year].set_index('case')[['c73311t', 'c73312t']]
+        flight_exp[year] = dvhh[year].set_index('case')[['weighta', 'c73311t', 'c73312t']]
     else: 
-        flight_exp[year] = dvhh[year].set_index('case')[['b487', 'b488']]
-    flight_exp[year].columns = ['7.3.4.1', '7.3.4.2']
+        flight_exp[year] = dvhh[year].set_index('case')[['weighta', 'b487', 'b488']]
+    flight_exp[year].columns = ['weight', '7.3.4.1', '7.3.4.2']
     
     temp = rawhh[year].columns.tolist()
     flights = []
@@ -61,9 +62,14 @@ for year in years:
         .unstack(level='Category').fillna(0).droplevel(axis=1, level=0).reset_index().drop_duplicates().set_index('case')
     
     flight_data[year] = flight_exp[year].join(temp2[['Domestic', 'International']]).fillna(0)
+    flight_data[year].loc[:, '7.3.4.1':] = flight_data[year].loc[:, '7.3.4.1':].apply(lambda x: x*flight_data[year]['weight'])
     
     flight_data[year]['7.3.4.1_proxy'] = (flight_data[year]['Domestic'] / flight_data[year]['Domestic'].sum()) * flight_data[year]['7.3.4.1'].sum()
-    flight_data[year]['7.3.4.2_proxy'] = (flight_data[year]['International'] / flight_data[year]['International'].sum()) * flight_data[year]['7.3.4.2'].sum()        
+    flight_data[year]['7.3.4.2_proxy'] = (flight_data[year]['International'] / flight_data[year]['International'].sum()) * flight_data[year]['7.3.4.2'].sum()
+
+    flight_data[year].loc[:, '7.3.4.1':] = flight_data[year].loc[:, '7.3.4.1':].apply(lambda x: x/flight_data[year]['weight'])  
+    
+    flight_data[year] = flight_data[year].drop('weight', axis=1)
 
 # save to file
 writer = pd.ExcelWriter(r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/processed/LCFS/Controls/flights_2001-2018.xlsx')

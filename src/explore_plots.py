@@ -19,7 +19,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import copy as cp
 
-
 axis = 'tCO$_{2}$e / capita'
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
@@ -47,23 +46,26 @@ group_dict = {'hhd_type':'Household Composition', 'age_group_hrp':'Age of HRP', 
 data_ghg = pd.read_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')
 data_ghg = data_ghg.loc[(data_ghg['group'] != '0') & (data_ghg['group'] != 'Other')]
 data_ghg['group'] = data_ghg['group']\
-    .str.replace('Other relative household', 'Other relatives')\
-        .str.replace('Single parent/guardian household', 'Single parent/\nguardian\nhousehold')\
-            .str.replace('Two parent/guardian household', 'Two parent/guardian\nhousehold')\
-                .str.replace(' with', '\nwith').str.replace('adult grand', 'adult\ngrand')
+    .str.replace('all_households', 'All households')
+#    .str.replace('Other relative household', 'Other relatives')\
+#        .str.replace('Single parent/guardian household', 'Single parent/\nguardian\nhousehold')\
+#            .str.replace('Two parent/guardian household', 'Two parent/guardian\nhousehold')\
+#                .str.replace(' with', '\nwith').str.replace('adult grand', 'adult\ngrand')
 
 data_allyears = data_ghg.loc[data_ghg['year'] == 'all'] 
 data_annual = data_ghg.loc[data_ghg['year'] != 'all'] 
 data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
 
+inc_max = data_ghg['pc_income'].max() *1.05
+
 ##################################
 # Calculate mean change per year #
 ##################################
 
-data_plot = data_annual.loc[(data_annual['group'] == 'all_households') & (data_annual['cpi'] == 'regular')]
+data_plot = data_annual.loc[(data_annual['group'] == 'All households') & (data_annual['cpi'] == 'regular')]
 sns.barplot(data=data_plot, y='year', x='Total', hue='cpi')
 
-years = list(range(2001, 2020))
+years = list(range(2001, 2021))
 # in tCO2e/capita
 mean_change = cp.copy(data_annual).set_index(['year', 'group_var', 'group', 'cpi'])[vars_ghg + ['pc_income']]\
     .stack().unstack(level='year')
@@ -93,7 +95,7 @@ mean_change_pct = mean_change_pct[keep].mean(axis=1).unstack(level=None)
 ############################
 
 # All households
-data_plot = data_annual.loc[data_annual['group'] == 'all_households'].set_index(['year', 'cpi'])[vars_ghg[:-1]].stack()\
+data_plot = data_annual.loc[data_annual['group'] == 'All households'].set_index(['year', 'cpi'])[vars_ghg[:-1]].stack()\
     .reset_index().rename(columns={'level_2':'Product Category', 0:'ghg'})
     
 # Plot
@@ -104,8 +106,20 @@ for cpi in ['regular', 'with_cpi']:
     sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', palette='colorblind')
     ax.set_ylabel(axis); ax.set_xlabel('Year')
     plt.legend(bbox_to_anchor=(1.6, 0.75))
+    plt.ylim(0, 4.5)
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_' + cpi + '.png', bbox_inches='tight', dpi=300)
     plt.show()
+    
+
+temp = cp.copy(data_plot); temp['cpi'] = temp['Prices & Multipliers'] = temp['cpi'].map({'with_cpi':'2007 prices and multipliers', 'regular':'Own year'})
+fig, ax = plt.subplots(figsize=(7.5, 4))
+sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', palette='colorblind', style='Prices & Multipliers')
+ax.set_ylabel(axis); ax.set_xlabel('Year')
+plt.legend(bbox_to_anchor=(1.525, 0.9))
+plt.ylim(0, 4.25)
+plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_both.png', bbox_inches='tight', dpi=300)
+plt.show()
+
 
 
 check = data_plot.loc[data_plot['Product Category'] == 'Air transport'].set_index(['year', 'cpi', 'Product Category']).unstack(level='cpi')
@@ -156,7 +170,7 @@ for cpi in ['regular', 'with_cpi']:
 # stacked
 color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
 data_plot = cp.copy(data_allyears)
-data_plot['group'] = data_plot['group'].str.replace('all_households', 'All households').str.replace('\n', ' ')\
+data_plot['group'] = data_plot['group'].str.replace('\n', ' ')\
     .str.replace('North West and', 'NW &').str.replace('Yorkshire and the Humber', 'Yorkshire & Humber')\
         .str.replace('Single parent/ guardian household', 'Single parent/guardian')\
             .str.replace('Two parent/guardian household', 'Two parents/guardians')
@@ -189,8 +203,9 @@ for cpi in ['regular', 'with_cpi']:
         # axis right
         ax2 = ax1.twinx()
         ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
-        ax2.set_ylabel('Income per capita')
-        ax2.set_ylim(0, 600)
+        ax2.scatter(income.index, income['pc_income'], color='k')
+        ax2.set_ylabel('Income per capita (weekly)')
+        ax2.set_ylim(0, inc_max)
         #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
         # modify plot
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + item + '_' + cpi + '_allyears.png',
@@ -221,21 +236,16 @@ for year in years:
                 start += height
             ax1.set_ylabel(axis)
             ax1.set_ylim(0, 30)
-            if item == 'income_group':
-                xloc = 1.1
-            elif item == 'hhd_type':
-                xloc = 1.63
-            else:
-                xloc = 1.65
-            plt.legend(temp.columns, bbox_to_anchor=(xloc, 1))
+            plt.legend(temp.columns, bbox_to_anchor=(2, 1))
             plt.xlabel(group_dict[item])
             plt.xticks(rotation=90)
             # axis right
             ax2 = ax1.twinx()
             ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
-            ax2.set_ylabel('Income per capita')
-            ax2.set_ylim(0, 600)
-            plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
+            ax2.scatter(income.index, income['pc_income'], color='k')
+            ax2.set_ylabel('Income per capita (weekly)')
+            ax2.set_ylim(0, inc_max)
+            plt.legend(['Income'], bbox_to_anchor=(1.5, 0.5))
             # modify plot
             plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + item + '_' + cpi + '_' + str(year) +'.png',
                         bbox_inches='tight', dpi=300)
@@ -262,20 +272,14 @@ for cpi in ['regular', 'with_cpi']:
             start += height
         ax1.set_ylabel(axis)
         ax1.set_ylim(0, 30)
-        if item == 'income_group':
-            xloc = 1.1
-        elif item == 'hhd_type':
-            xloc = 1.63
-        else:
-            xloc = 1.65
-        #plt.legend(temp.columns, bbox_to_anchor=(xloc, 1))
         plt.xlabel('Year')
         plt.xticks(rotation=90)
         # axis right
         ax2 = ax1.twinx()
         ax2.plot([str(x)[:4] for x in income.index], income['pc_income'], color='k', lw=2, linestyle='--')
-        ax2.set_ylabel('Income per capita')
-        ax2.set_ylim(0, 600)
+        ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
+        ax2.set_ylabel('Income per capita (weekly)')
+        ax2.set_ylim(0, inc_max)
         #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
         # modify plot
         plt.title(cpi + ' ' + group_dict[group_var] + '\n\n ' + item.replace('\n', ' '))
@@ -305,13 +309,13 @@ for item in data_plot[['group_var']].drop_duplicates()['group_var']:
         var = vars_ghg_dict[i]
         if i == 0:
             sns.lineplot(data=temp, x='Year', y=var, hue='Group', style='Prices & Multipliers', 
-                         palette='colorblind', legend=True, lw=0.1)
+                         palette='colorblind', legend=True, lw=0.05)
             plt.legend(bbox_to_anchor=(2.5, 5))
-            plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Lineplots_' + item + '_LEGEND.png',
-                        bbox_inches='tight', dpi=300)
+            #plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Lineplots_' + item + '_LEGEND.png',
+            #            bbox_inches='tight', dpi=300)
         # make plot
         sns.lineplot(ax=axs[i], data=temp, x='Year', y=var, hue='Group', style='Prices & Multipliers', 
-                     palette='colorblind', legend=False)
+                     palette='colorblind', legend=False, lw=1)
         ymin = maxmin.loc['min', var] * 0.9; ymax = maxmin.loc['max', var] * 1.1
         axs[i].set_ylim(ymin, ymax)
     plt.xticks(rotation=90)

@@ -19,6 +19,7 @@ Next run: LCFS_estimate_emissions.py
 import pandas as pd
 import LCFS_import_data_function as lcfs_import
 import copy as cp
+import numpy as np
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -54,7 +55,7 @@ for year in years:
     
 # add 2020 data
 lcfs[2020] = pd.read_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv', index_col=[0, 1], header=[0]).fillna(0)
-lcfs[2020]['income anonymised'] = lcfs[2020]['Mean annual income'] / (365/7)
+# adjust income to LCFS by prop of income data
 lcfs[2020].columns = [str(x) for x in lcfs[2020].columns]
 
 years.append(2020)
@@ -177,18 +178,43 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
         flights['7.3.4.1'] = flights['Domestic'] / flights['Domestic'].sum() * total_domestic
         flights['7.3.4.2'] = flights['International'] / flights['International'].sum() * total_international
         
+        hhdspend_cpi[year] = hhdspend_cpi[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
+        
     # adjust gas (4.4.2) and electricity (4.4.1) to kwh ratio
     # generate multiplier compared to 2007
     multiplier = gas_elec.loc[year] / gas_elec.loc[ref_year]
-    total_spend_new_elec = hhdspend_cpi[ref_year]['4.4.1'].sum() * multiplier['Electricity']
-    total_spend_new_gas = hhdspend_cpi[ref_year]['4.4.2'].sum() * multiplier['Natural gas']
     
-    # adjust totals to new total
-    hhdspend_cpi[year]['4.4.1'] = (hhdspend_cpi[year]['4.4.1'] / hhdspend_cpi[year]['4.4.1'].sum()) * total_spend_new_elec 
-    hhdspend_cpi[year]['4.4.2'] = (hhdspend_cpi[year]['4.4.2'] / hhdspend_cpi[year]['4.4.2'].sum()) * total_spend_new_gas
-    
-    hhdspend_cpi[year] = hhdspend_cpi[year].drop(['7.3.4.1', '7.3.4.2'], axis = 1).join(flights[['7.3.4.1', '7.3.4.2']])
-
+    if year != 2020:
+        # adjust totals to new total
+        temp = hhdspend_cpi[year][['4.4.1', '4.4.2']].apply(lambda x: x*hhdspend_cpi[year]['weight'])
+        # get weighted sums of ref year
+        total_spend_ry_elec = np.sum(hhdspend_cpi[ref_year]['4.4.1'] * hhdspend_cpi[ref_year]['weight'])
+        total_spend_ry_gas = np.sum(hhdspend_cpi[ref_year]['4.4.2'] * hhdspend_cpi[ref_year]['weight'])
+        # calculate new totals
+        total_spend_new_elec = total_spend_ry_elec * multiplier['Electricity']
+        total_spend_new_gas = total_spend_ry_gas * multiplier['Natural gas']
+        # estimate new gas and elec exp. adjusted to consumption proportions
+        temp['4.4.1'] = (temp['4.4.1'] / temp['4.4.1'].sum()) * total_spend_new_elec 
+        temp['4.4.2'] = (temp['4.4.2'] / temp['4.4.2'].sum()) * total_spend_new_gas
+        temp = temp.apply(lambda x: x/hhdspend_cpi[year]['weight'])
+        hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.4.1', '4.4.2'], axis=1).join(temp[['4.4.1', '4.4.2']])
+        
+    else:
+        temp = hhdspend_cpi[year][['Weighted number of households (thousands)', '4.4.1', '4.4.2']]
+        temp[['4.4.1', '4.4.2']] = temp[['4.4.1', '4.4.2']].apply(lambda x: x*hhdspend_cpi[year]['Weighted number of households (thousands)'])
+        temp = temp.join(temp.sum(axis=0, level=0), rsuffix='_sum')
+        # get weighted sums of ref year
+        total_spend_ry_elec = np.sum(hhdspend_cpi[ref_year]['4.4.1'] * hhdspend_cpi[ref_year]['weight'])
+        total_spend_ry_gas = np.sum(hhdspend_cpi[ref_year]['4.4.2'] * hhdspend_cpi[ref_year]['weight'])
+        # calculate new totals
+        total_spend_new_elec = total_spend_ry_elec * multiplier['Electricity']
+        total_spend_new_gas = total_spend_ry_gas * multiplier['Natural gas']
+        # estimate new gas and elec exp. adjusted to consumption proportions
+        temp['4.4.1'] = temp['4.4.1'] / temp['4.4.1_sum'] * total_spend_new_elec
+        temp['4.4.2'] = temp['4.4.2'] / temp['4.4.2_sum'] * total_spend_new_gas
+        temp[['4.4.1', '4.4.2']] = temp[['4.4.1', '4.4.2']].apply(lambda x: x/hhdspend_cpi[year]['Weighted number of households (thousands)'])
+        hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.4.1', '4.4.2'], axis=1).join(temp[['4.4.1', '4.4.2']])
+        
     # clean data
     hhdspend_cpi[year] = hhdspend_cpi[year][order]
     hhdspend_cpi[year].index.name = 'case'

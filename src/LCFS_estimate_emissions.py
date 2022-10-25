@@ -20,8 +20,6 @@ import pandas as pd
 import estimate_emissions_main_function_2021 as estimate_emissions
 import copy as cp
 import pysal as ps
-import pickle
-import numpy as np
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -63,9 +61,9 @@ for year in list(lcfs.keys()):
         
         # classify age range of hrp
         people[year]['age_group_hrp'] = 'Other'
-        for i in [[18, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79]]:
+        for i in [[18, 29], [30, 49], [50, 64], [65, 74]]:
             people[year].loc[people[year]['age hrp'] >= i[0], 'age_group_hrp'] = str(i[0]) + '-' + str(i[1])
-        people[year].loc[people[year]['age hrp'] >= 80, 'age_group_hrp'] = '80+'
+        people[year].loc[people[year]['age hrp'] >= 80, 'age_group_hrp'] = '75+'
         
         # OECD household equivalent scales
         # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
@@ -89,7 +87,8 @@ for year in list(lcfs.keys()):
     else:
         lcfs[year] = lcfs[year].rename(columns={'Weighted average number of persons per household':'no people', 
                                                 'Weighted number of households (thousands)':'weight'})
-        people[year] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1].join(lcfs[year][['income anonymised']])
+        people[year] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1]
+        people[year]['pc_income'] = people[year]['income anonymised'] / people[year]['no people']
     
     # gather spend      
     lcfs[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].astype(float).apply(lambda x: x*lcfs[year]['weight'])
@@ -127,20 +126,3 @@ for year in [str(y) + '_cpi' for y in years]:
     temp.to_csv(name)
     print(year +  ' with 2007 multipliers saved')
 
-
-
-# do checks
-
-check = multipliers[2019]
-
-print('\n\n\n', lcfs[2019].loc[:,'1.1.1.1':'12.5.3.5'].sum(1).mean(), '\n\n\n', lcfs[2020].loc[:,'1.1.1.1':'12.5.3.5'].sum(1));
-
-print('\n\n\n', hhd_ghg[2019].loc[:,'1.1.1.1':'12.5.3.5'].sum(1).mean(), '\n\n\n', hhd_ghg[2020].loc[:,'1.1.1.1':'12.5.3.5'].sum(1));
-
-
-check['mean_2019'] = hhd_ghg[2019].loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/ hhd_ghg[2019]['no people']).mean()
-check['mean_2020'] = hhd_ghg[2020].loc['Average', '1.1.1.1':'12.5.3.5'] / hhd_ghg[2020].loc['Average', '1.1.1.1':'12.5.3.5']
-
-check = check.fillna(0)
-
-check.sum()

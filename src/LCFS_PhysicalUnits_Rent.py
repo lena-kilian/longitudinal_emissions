@@ -27,7 +27,7 @@ for year in lcf_years:
     dvhh[first_year] = pd.read_csv(dvhh_file, sep='\t', index_col=0)
     dvhh[first_year].columns = dvhh[first_year].columns.str.lower()
     
-    rent[first_year] = pd.DataFrame()
+    rent[first_year] = dvhh[first_year][['weighta']]
     rent[first_year]['owned_code'] = dvhh[first_year]['a121'] # 1-4 are rented
     rent[first_year]['rented_prop'] = 0
     rent[first_year].loc[(rent[first_year]['owned_code'] >= 1) & (rent[first_year]['owned_code'] <= 4), 'rented_prop'] = 1
@@ -36,6 +36,9 @@ for year in lcf_years:
     rent[first_year]['owned_prop'] = abs(rent[first_year]['rented_prop'] - 1)
     rent[first_year]['rent_dwelling_1'] = dvhh[first_year]['b010']+dvhh[first_year]['b020']
     rent[first_year]['rent_dwelling_2'] = dvhh[first_year]['c41211t']
+    # adjust to weight to ensure totals are correct
+    rent[first_year].loc[:,'rented_prop':] = rent[first_year].loc[:,'rented_prop':].apply(lambda x:x*rent[first_year]['weighta'])
+    
     if first_year < 2005:
         rent[first_year]['room_no'] = dvhh[first_year]['a114']
     else:
@@ -45,6 +48,8 @@ for year in lcf_years:
     
     temp = rent[first_year]['rented_prop'] * rent[first_year]['room_no']
     rent[first_year]['4.1.1_proxy'] = (temp/temp.sum() * rent[first_year]['rent_dwelling_1'].sum()) + rent[first_year]['rent_dwelling_2']
-    
+    # divide by weightto get back to household level
+    rent[first_year].loc[:,'rented_prop':] = rent[first_year].loc[:,'rented_prop':].apply(lambda x:x/rent[first_year]['weighta'])
+    # save
     rent[first_year][['4.1.1_proxy', '4.1.2_proxy']].reset_index().to_excel(writer, sheet_name=str(first_year))
 writer.save()
