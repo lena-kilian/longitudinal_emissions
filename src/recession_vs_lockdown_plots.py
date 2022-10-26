@@ -63,19 +63,24 @@ data_comp['group_cat'] = data_comp['group'].astype('category').cat.set_categorie
 
 data_comp = data_comp.sort_values('group_cat')
 
+
+colors = ["#E1BCA7", "#B0C7D4"]
 for cpi in ['with_cpi', 'regular']:
     for group in data_comp[['group_var']].drop_duplicates()['group_var']:
         temp = data_comp.loc[(data_comp['cpi'] == cpi) & (data_comp['group_var'] == group)]
         
         pos_x = 2; pos_y = 1;
         fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(3, 5), gridspec_kw={'height_ratios': [8, 1, 1]})
-        sns.barplot(ax=axs[0], data=temp.loc[temp['level_3'].isin(['pc_income', 'Total']) == False], x='Difference', y='level_3', ci=None, hue='type', palette='colorblind')
+        sns.barplot(ax=axs[0], data=temp.loc[temp['level_3'].isin(['pc_income', 'Total']) == False], x='Difference', y='level_3', ci=None, 
+                    hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k')
         axs[0].set_xlim(-1, 1); axs[0].axvline(0, c='k', ls='--', lw=0.5); axs[0].set_ylabel('')
         axs[0].legend(bbox_to_anchor=(pos_x, pos_y))
-        sns.barplot(ax=axs[1], data=temp.loc[temp['level_3'] == 'Total'], x='Difference', y='level_3', hue='type', palette='colorblind', ci=None)
+        sns.barplot(ax=axs[1], data=temp.loc[temp['level_3'] == 'Total'], x='Difference', y='level_3',
+                    hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
         axs[1].set_xlim(-2.5, 2.5); axs[1].axvline(0, c='k', ls='--', lw=0.5); axs[1].set_ylabel('')
         axs[1].legend(bbox_to_anchor=(pos_x, pos_y))
-        sns.barplot(ax=axs[2], data=temp.loc[temp['level_3'] == 'pc_income'], x='Difference', y='level_3', hue='type', palette='colorblind', ci=None)
+        sns.barplot(ax=axs[2], data=temp.loc[temp['level_3'] == 'pc_income'], x='Difference', y='level_3', 
+                    hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
         axs[2].set_xlim(-12, 12); axs[2].axvline(0, c='k', ls='--', lw=0.5); axs[2].set_ylabel('')
         axs[2].legend(bbox_to_anchor=(pos_x, pos_y))
         
@@ -83,7 +88,8 @@ for cpi in ['with_cpi', 'regular']:
         plt.show()
         
         fig, ax = plt.subplots(figsize=(3, 4))
-        sns.barplot(ax=ax, data=temp, x='Percentage difference', y='level_3', hue='type', palette='colorblind', ci=None)
+        sns.barplot(ax=ax, data=temp, x='Percentage difference', y='level_3', 
+                    hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
         ax.legend(bbox_to_anchor=(pos_x, pos_y))
         ax.set_xlim(-90, 90); ax.axvline(0, c='k', ls='--', lw=0.5);
         
@@ -96,13 +102,14 @@ for cpi in ['with_cpi', 'regular']:
     
     pos_x = 2; pos_y = 1;
     fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(3, 5), gridspec_kw={'height_ratios': [8, 1, 1]})
-    sns.barplot(ax=axs[0], data=temp.loc[temp['level_3'].isin(['pc_income', 'Total']) == False], x='Difference', y='level_3', ci=None, hue='type', palette='colorblind')
+    sns.barplot(ax=axs[0], data=temp.loc[temp['level_3'].isin(['pc_income', 'Total']) == False], x='Difference', y='level_3', ci=None, 
+                hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k')
     axs[0].set_xlim(-1, 1); axs[0].axvline(0, c='k', ls='--', lw=0.5); axs[0].set_ylabel('')
     axs[0].legend(bbox_to_anchor=(pos_x, pos_y))
-    sns.barplot(ax=axs[1], data=temp.loc[temp['level_3'] == 'Total'], x='Difference', y='level_3', hue='type', palette='colorblind', ci=None)
+    sns.barplot(ax=axs[1], data=temp.loc[temp['level_3'] == 'Total'], x='Difference', y='level_3', hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
     axs[1].set_xlim(-2.5, 2.5); axs[1].axvline(0, c='k', ls='--', lw=0.5); axs[1].set_ylabel('')
     axs[1].legend(bbox_to_anchor=(pos_x, pos_y))
-    sns.barplot(ax=axs[2], data=temp.loc[temp['level_3'] == 'pc_income'], x='Difference', y='level_3', hue='type', palette='colorblind', ci=None)
+    sns.barplot(ax=axs[2], data=temp.loc[temp['level_3'] == 'pc_income'], x='Difference', y='level_3', hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
     axs[2].set_xlim(-12, 12); axs[2].axvline(0, c='k', ls='--', lw=0.5); axs[2].set_ylabel('')
     axs[2].legend(bbox_to_anchor=(pos_x, pos_y))
     
@@ -110,7 +117,7 @@ for cpi in ['with_cpi', 'regular']:
     plt.show()
     
     fig, ax = plt.subplots(figsize=(3, 4))
-    sns.barplot(ax=ax, data=temp, x='Percentage difference', y='level_3', hue='type', palette='colorblind', ci=None)
+    sns.barplot(ax=ax, data=temp, x='Percentage difference', y='level_3', hue='type', palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
     ax.legend(bbox_to_anchor=(pos_x, pos_y))
     ax.set_xlim(-90, 90); ax.axvline(0, c='k', ls='--', lw=0.5);
     
@@ -129,19 +136,19 @@ for event in ['2007-2009', '2019-2020']:
             fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(5, 6), gridspec_kw={'height_ratios': [8, 1, 1]})
             
             temp_data = temp.loc[temp['level_3'].isin(['pc_income', 'Total']) == False]
-            sns.barplot(ax=axs[0], data=temp_data, x='Difference', y='level_3', ci=None, hue='group', palette='colorblind')
+            sns.barplot(ax=axs[0], data=temp_data, x='Difference', y='level_3', ci=None, hue='group', palette='colorblind', linewidth=0.5, edgecolor='k')
             x_max = int(max(abs(temp_data['Difference'].min()), temp_data['Difference'].max()) * 1.1 + 1)
             axs[0].set_xlim(-1*x_max, x_max); axs[0].axvline(0, c='k', ls='--', lw=0.5); axs[0].set_ylabel('')
             axs[0].legend(bbox_to_anchor=(pos_x, pos_y))
             
             temp_data = temp.loc[temp['level_3'] == 'Total']
-            sns.barplot(ax=axs[1], data=temp_data, x='Difference', y='level_3', hue='group', palette='colorblind', ci=None)
+            sns.barplot(ax=axs[1], data=temp_data, x='Difference', y='level_3', hue='group', palette='colorblind', linewidth=0.5, edgecolor='k', ci=None)
             x_max = int(max(abs(temp_data['Difference'].min()), temp_data['Difference'].max()) * 1.1 + 1)
             axs[1].set_xlim(-1*x_max, x_max); axs[1].axvline(0, c='k', ls='--', lw=0.5); axs[1].set_ylabel('')
             axs[1].legend(bbox_to_anchor=(pos_x, pos_y))
             
             temp_data = temp.loc[temp['level_3'] == 'pc_income']; 
-            sns.barplot(ax=axs[2], data=temp_data, x='Difference', y='level_3', hue='group', palette='colorblind', ci=None)
+            sns.barplot(ax=axs[2], data=temp_data, x='Difference', y='level_3', hue='group', palette='colorblind', linewidth=0.5, edgecolor='k', ci=None)
             x_max = int(max(abs(temp_data['Difference'].min()), temp_data['Difference'].max()) * 1.1 + 1)
             axs[2].set_xlim(-1*x_max, x_max); axs[2].axvline(0, c='k', ls='--', lw=0.5); axs[2].set_ylabel('')
             axs[2].legend(bbox_to_anchor=(pos_x, pos_y))
@@ -151,7 +158,7 @@ for event in ['2007-2009', '2019-2020']:
             
             
             fig, ax = plt.subplots(figsize=(5, 6))
-            sns.barplot(ax=ax, data=temp, x='Percentage difference', y='level_3', hue='group', palette='colorblind', ci=None)
+            sns.barplot(ax=ax, data=temp, x='Percentage difference', y='level_3', hue='group', palette='colorblind', linewidth=0.5, edgecolor='k', ci=None)
             ax.legend(bbox_to_anchor=(pos_x, pos_y))
             x_max = int((max(abs(temp['Percentage difference'].min()), temp['Percentage difference'].max()) * 1.1 + 1))
             ax.set_xlim(-1*x_max, x_max); ax.axvline(0, c='k', ls='--', lw=0.5);
@@ -168,7 +175,7 @@ for event in ['2007-2009', '2019-2020']:
             l = len(temp[['group']].drop_duplicates()['group'])
             
             fig, ax = plt.subplots(figsize=(5, l))
-            sns.barplot(ax=ax, data=temp, x='Difference', y='group', hue='level_3', palette='colorblind', ci=None)
+            sns.barplot(ax=ax, data=temp, x='Difference', y='group', hue='level_3', palette='colorblind', linewidth=0.5, edgecolor='k', ci=None)
             ax.legend(bbox_to_anchor=(pos_x, pos_y))
             x_max = int((max(abs(temp['Difference'].min()), temp['Difference'].max()) * 1.1 + 1))
             ax.set_xlim(-1*x_max, x_max); ax.axvline(0, c='k', ls='--', lw=0.5);
@@ -176,10 +183,61 @@ for event in ['2007-2009', '2019-2020']:
             plt.show() 
             
             fig, ax = plt.subplots(figsize=(5, l))
-            sns.barplot(ax=ax, data=temp, x='Percentage difference', y='group', hue='level_3', palette='colorblind', ci=None)
+            sns.barplot(ax=ax, data=temp, x='Percentage difference', y='group', hue='level_3', palette='colorblind', linewidth=0.5, edgecolor='k', ci=None)
             ax.legend(bbox_to_anchor=(pos_x, pos_y))
             x_max = int((max(abs(temp['Percentage difference'].min()), temp['Percentage difference'].max()) * 1.1 + 1))
             ax.set_xlim(-1*x_max, x_max); ax.axvline(0, c='k', ls='--', lw=0.5);
             
             plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_pct_difference_T_' + group + '_' + cpi + '_' + event+ '.png', bbox_inches='tight', dpi=300)
             plt.show() 
+            
+            
+            
+data_plot = data_ghg.loc[data_ghg['year'].isin(['2007', '2009', '2019', '2020']) == True]
+temp = data_plot[['group_var', 'group', 'cpi']].drop_duplicates()
+temp['year'] = '2013'
+temp[vars_ghg] = 0
+data_plot = data_plot.append(temp).set_index(['year',  'group', 'group_var', 'cpi'])[vars_ghg].stack()\
+    .reset_index().rename(columns={'level_4':'Product Category', 0:'ghg'})
+data_plot['year'] = data_plot['year'].astype(int)
+
+# Set your custom color palette
+colors = ["#AA5B54", "#E1BCA7", "#FFFFFF", "#5580A6", "#B0C7D4"]
+
+xmax = int((data_plot.loc[(data_plot['Product Category'] == 'Total')].max()['ghg'] * 1.1) + 1)
+for cpi in ['with_cpi', 'regular']:
+    for group in data_comp[['group_var']].drop_duplicates()['group_var']:
+        temp = data_plot.loc[(data_plot['Product Category'] == 'Total') & 
+                             (data_plot['cpi'] == cpi) & 
+                             (data_plot['group_var'] == group)]
+        
+        l = len(temp[['group']].drop_duplicates()['group'])
+        fig, ax = plt.subplots(figsize=(4, l*0.5))
+        sns.barplot(ax=ax, data=temp, x='ghg', y='group', hue='year', 
+                    palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
+        ax.legend(bbox_to_anchor=(1.5, 1))
+        for i in range(1, l):
+            ax.axhline(i-0.5, c='k', ls='--', lw=0.5);
+        ax.set_xlabel('tCO$_{2}$e / capita'); ax.set_ylabel(group_dict[group])
+        ax.set_xlim(0, xmax)
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_Total_comp_recession_lockdown_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=300)
+        plt.show() 
+    
+xmax = int((data_plot.loc[(data_plot['Product Category'] != 'Total')].max()['ghg'] * 1.1) + 1)
+for cpi in ['with_cpi', 'regular']:
+    for group in data_comp[['group']].drop_duplicates()['group']:
+        temp = data_plot.loc[(data_plot['Product Category'] != 'Total') & 
+                             (data_plot['cpi'] == cpi) & 
+                             (data_plot['group'] == group)]
+        
+        l = len(temp[['Product Category']].drop_duplicates()['Product Category'])
+        fig, ax = plt.subplots(figsize=(4, l*0.5))
+        sns.barplot(ax=ax, data=temp, x='ghg', y='Product Category', hue='year', 
+                    palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
+        for i in range(1, l):
+            ax.axhline(i-0.5, c='k', ls='--', lw=0.5);
+        ax.legend(bbox_to_anchor=(1, 1)); ax.set_ylabel('')
+        ax.set_xlabel('tCO$_{2}$e / capita')
+        ax.set_xlim(0, xmax)
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_prod_comp_recession_lockdown_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=300)
+        plt.show() 
