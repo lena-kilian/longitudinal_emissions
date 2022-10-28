@@ -50,10 +50,7 @@ for year in list(hhd_ghg.keys()):
     hhd_ghg[year]['pop'] = hhd_ghg[year]['weight'] * hhd_ghg[year]['no people']
     hhd_ghg[year]['no_females'] = hhd_ghg[year][['females aged <2', 'females aged 2-4', 'females aged 5-17', 'females aged 18-44', 'females aged 45-59',
                                                  'females aged 60-64', 'females aged 65-69', 'females aged >69']].sum(1)
-    hhd_ghg[year]['no_males'] = hhd_ghg[year]['no people'] - hhd_ghg[year]['no_females']
-    for item in ['age_adults_mean', 'age_minors_mean', 'age_all_mean']:
-        hhd_ghg[year][item] = hhd_ghg[year][item] * hhd_ghg[year]['no people']
-        
+    hhd_ghg[year]['no_males'] = hhd_ghg[year]['no people'] - hhd_ghg[year]['no_females']        
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     hhd_ghg[year]['all'] = 'all_households'
 
@@ -76,10 +73,34 @@ for item in ['age_group_hrp', 'income_group', 'all']: #'hhd_type','gor modified'
         hhd_means = hhd_means.groupby(item).sum()
         hhd_means[vars_hhd_level] = hhd_means[vars_hhd_level].apply(lambda x: x / hhd_means['weight'])
         # person level
-        mean = cp.copy(temp)
-        mean.loc[:,:'age_all_mean'] = mean.loc[:,:'rooms in accommodation'].apply(lambda x: x * mean['weight'])
+        
+        # person level
+        mean = temp[vars_ghg + ['weight', 'pop', item]]
+        mean[vars_ghg] = mean[vars_ghg].apply(lambda x: x * mean['weight'])
         mean = mean.groupby(item).sum()
-        mean = mean.apply(lambda x: x / mean['pop'])[vars_ghg + vars_weighted_means].join(hhd_means)
+        mean[vars_ghg] = mean[vars_ghg].apply(lambda x: x / mean['pop'])
+        
+        # treat weighted means for soc-dem differently
+        mean_w = temp[vars_weighted_means + ['weight', 'no people', 'no_adults', item]]
+        mean_w['pop_minors'] = mean_w['weight'] * (mean_w['no people'] - mean_w['no_adults'])
+        mean_w['pop_adults'] = mean_w['weight'] * mean_w['no_adults']
+        mean_w['pop_all'] = mean_w['weight'] * mean_w['no people']
+        # age minors needs to be multiplied by number of minors
+        mean_w['age_minors_mean'] = mean_w['age_minors_mean'] * (mean_w['no people'] - mean_w['no_adults'])
+        # age adults needs to be multiplied by number of adults
+        mean_w['age_adults_mean'] = mean_w['age_adults_mean'] * mean_w['no_adults']
+        # age all needs to be multiplied by number of people
+        mean_w['age_all_mean'] = mean_w['age_all_mean'] * mean_w['no people']
+        mean_w[vars_weighted_means] = mean_w[vars_weighted_means].apply(lambda x: x * mean_w['weight'])
+        mean_w = mean_w.groupby(item).sum()
+        # income and age of hrp only need to be divided by weight, do this at end
+        mean_w[['age hrp', 'income anonymised']] = mean_w[['age hrp', 'income anonymised']].apply(lambda x: x/mean_w['weight'])
+        # age groups needs to be divided by age pop
+        for a in ['all', 'adults', 'minors']:
+            mean_w['age_' + a + '_mean'] = mean_w['age_' + a + '_mean'] / mean_w['pop_' + a] 
+            
+        # combine dfs        
+        mean = mean[vars_ghg].join(mean_w[vars_weighted_means]).join(hhd_means)
         mean['group_var'] = item
         mean['year'] = int(str(year)[:4])
         if str(year)[-3:] == 'cpi':
@@ -100,15 +121,38 @@ for item in ['age_group_hrp', 'income_group', 'all']: #'hhd_type','gor modified'
     # repeat mean and count
     # calculate weighted means
     # household level
-    hhd_means = cp.copy(temp_data)[vars_hhd_level + ['weight', item]]
+    hhd_means = cp.copy(temp_data)[vars_hhd_level + ['weight', item, 'cpi']]
     hhd_means[vars_hhd_level] = hhd_means[vars_hhd_level].apply(lambda x: x * hhd_means['weight'])
-    hhd_means = hhd_means.groupby(item).sum()
+    hhd_means = hhd_means.groupby([item, 'cpi']).sum()
     hhd_means[vars_hhd_level] = hhd_means[vars_hhd_level].apply(lambda x: x / hhd_means['weight'])
+
     # person level
-    mean = cp.copy(temp_data)
-    mean.loc[:,'Food and Drinks':'rooms in accommodation'] = mean.loc[:,'Food and Drinks':'rooms in accommodation'].apply(lambda x: x * mean['weight'])
+    mean = temp_data[vars_ghg + ['weight', 'pop', item, 'cpi']]
+    mean[vars_ghg] = mean[vars_ghg].apply(lambda x: x * mean['weight'])
     mean = mean.groupby([item, 'cpi']).sum()
-    mean = mean.apply(lambda x: x / mean['pop'])[vars_ghg + vars_weighted_means].join(hhd_means)
+    mean[vars_ghg] = mean[vars_ghg].apply(lambda x: x / mean['pop'])
+    
+    # treat weighted means for soc-dem differently
+    mean_w = temp_data[vars_weighted_means + ['weight', 'no people', 'no_adults', item, 'cpi']]
+    mean_w['pop_minors'] = mean_w['weight'] * (mean_w['no people'] - mean_w['no_adults'])
+    mean_w['pop_adults'] = mean_w['weight'] * mean_w['no_adults']
+    mean_w['pop_all'] = mean_w['weight'] * mean_w['no people']
+    # age minors needs to be multiplied by number of minors
+    mean_w['age_minors_mean'] = mean_w['age_minors_mean'] * (mean_w['no people'] - mean_w['no_adults'])
+    # age adults needs to be multiplied by number of adults
+    mean_w['age_adults_mean'] = mean_w['age_adults_mean'] * mean_w['no_adults']
+    # age all needs to be multiplied by number of people
+    mean_w['age_all_mean'] = mean_w['age_all_mean'] * mean_w['no people']
+    mean_w[vars_weighted_means] = mean_w[vars_weighted_means].apply(lambda x: x * mean_w['weight'])
+    mean_w = mean_w.groupby([item, 'cpi']).sum()
+    # income and age of hrp only need to be divided by weight, do this at end
+    mean_w[['age hrp', 'income anonymised']] = mean_w[['age hrp', 'income anonymised']].apply(lambda x: x/mean_w['weight'])
+    # age groups needs to be divided by age pop
+    for a in ['all', 'adults', 'minors']:
+        mean_w['age_' + a + '_mean'] = mean_w['age_' + a + '_mean'] / mean_w['pop_' + a] 
+    
+    # combine dfs        
+    mean = mean[vars_ghg].join(mean_w[vars_weighted_means]).join(hhd_means)
     mean['group_var'] = item
     mean['year'] = 'all'
     # add count data
@@ -131,9 +175,6 @@ results.loc[results['group_var'] == 'gor modified', 'group'] = results.loc[resul
 
 results['group'] = results['group'].str.replace('Group ', '')
 
-results['pc_income'] = results['income anonymised']
-results['income anonymised'] = results['pc_income'] * results['no people']
-
 # add 2020 data
 hhd_ghg[2020] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2020.csv')
 hhd_ghg['2020_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_2020_cpi.csv')
@@ -155,12 +196,12 @@ for year in [2020, '2020_cpi']:
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     hhd_ghg[year]['group'] = hhd_ghg[year]['group'].map(group_dict)
     hhd_ghg[year]['group_var'] = hhd_ghg[year]['group_var'].map({'All':'all', 'Age of HRP':'age_group_hrp', 'Income decile':'income_group'})
-    hhd_ghg[year]['pc_income'] = hhd_ghg[year]['income anonymised'] / hhd_ghg[year]['no people']
     
     hhd_ghg[year][vars_ghg] = hhd_ghg[year][vars_ghg].apply(lambda x: x/hhd_ghg[year]['no people'])
     idx = results.columns.tolist()
     results = results.append(hhd_ghg[year])[idx]
-    
+
+results['pc_income'] = results['income anonymised'] / results['no people'] 
 results['hhd_income_scaled'] = results['income anonymised'] / results['income anonymised'].max() * 100
 results['pc_income_scaled'] = results['pc_income'] / results['pc_income'].max() * 100
 

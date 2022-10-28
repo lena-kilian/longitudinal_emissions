@@ -30,9 +30,9 @@ vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, li
             'Recreation, culture, and clothing', 'Other consumption',
             'Total']
 
-vars_ghg_dict = ['Food and\nDrinks', 'Housing, water\nand waste', 'Electricity, gas,\nliquid and\nsolid fuels', 
-                 'Private and\npublic road\ntransport', 'Air transport', 
-                 'Recreation,\nculture, and\nclothing', 'Other\nconsumption',
+vars_ghg_dict = ['Food and\nDrinks', 'Housing, water\nand waste', 'Electricity, gas,\nliquid and solid fuels', 
+                 'Private and public\nroad transport', 'Air transport', 
+                 'Recreation, culture,\nand clothing', 'Other\nconsumption',
                  'Total']
 
 group_dict = {'hhd_type':'Household Composition', 'age_group_hrp':'Age of HRP', 'gor modified':'Region', 
@@ -220,6 +220,7 @@ for cpi in ['with_cpi', 'regular']:
             ax.axhline(i-0.5, c='k', ls='--', lw=0.5);
         ax.set_xlabel('tCO$_{2}$e / capita'); ax.set_ylabel(group_dict[group])
         ax.set_xlim(0, xmax)
+        ax.set_title('                                                                                                                            ')
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_Total_comp_recession_lockdown_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=300)
         plt.show() 
     
@@ -229,9 +230,10 @@ for cpi in ['with_cpi', 'regular']:
         temp = data_plot.loc[(data_plot['Product Category'] != 'Total') & 
                              (data_plot['cpi'] == cpi) & 
                              (data_plot['group'] == group)]
+        temp['Product Category'] = temp['Product Category'].map(dict(zip(vars_ghg, vars_ghg_dict)))
         
         l = len(temp[['Product Category']].drop_duplicates()['Product Category'])
-        fig, ax = plt.subplots(figsize=(4, l*0.5))
+        fig, ax = plt.subplots(figsize=(2.5, l*0.5))
         sns.barplot(ax=ax, data=temp, x='ghg', y='Product Category', hue='year', 
                     palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
         for i in range(1, l):
@@ -240,4 +242,37 @@ for cpi in ['with_cpi', 'regular']:
         ax.set_xlabel('tCO$_{2}$e / capita')
         ax.set_xlim(0, xmax)
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_prod_comp_recession_lockdown_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=300)
+        plt.show() 
+        
+xmax = int((data_plot.loc[(data_plot['Product Category'] != 'Total')].max()['ghg'] * 1.1) + 1)
+for cpi in ['with_cpi', 'regular']:
+    for group in data_comp[['group_var']].drop_duplicates()['group_var']:
+        temp = data_plot.loc[(data_plot['Product Category'] != 'Total') & 
+                             (data_plot['cpi'] == cpi) & 
+                             (data_plot['group_var'] == group)]
+        temp['Product Category'] = temp['Product Category'].map(dict(zip(vars_ghg, vars_ghg_dict)))
+        
+        groups = temp[['group']].drop_duplicates()['group'].tolist()
+        l = len(groups)
+        
+        fig, axs = plt.subplots(figsize=(10, 7.5), ncols=5, nrows=2, sharex=True, sharey=True)
+        for i in range(l):
+            if i >= 5:
+                r=1; c=i-5
+            else:
+                r=0; c=i
+            gr = groups[i]
+            temp2 = temp.loc[temp['group'] == gr]
+            sns.barplot(ax=axs[r, c], data=temp2, x='ghg', y='Product Category', hue='year', 
+                        palette=sns.color_palette(colors), linewidth=0.5, edgecolor='k', ci=None)
+            for i in range(1, 7):
+                axs[r, c].axhline(i-0.5, c='k', ls='--', lw=0.5);
+            axs[r, c].get_legend().remove()
+            axs[r, c].set_ylabel('')
+            #axs[r, c].legend(bbox_to_anchor=(1, 1));
+            axs[0, c].set_xlabel('')
+            axs[1, c].set_xlabel('tCO$_{2}$e / capita')
+            axs[r, c].set_xlim(0, xmax)
+            axs[r, c].set_title(gr)
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_grid_comp_recession_lockdown_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=300)
         plt.show() 
