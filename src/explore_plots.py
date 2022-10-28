@@ -333,7 +333,7 @@ for cpi in ['regular', 'with_cpi']:
 fig, ax1 = plt.subplots(figsize=(int(len(temp.index)/4), 5))
 # axis left
 temp2 = temp.stack().reset_index().rename(columns={'level_1':'Product Category', 0:'ghg'})
-sns.barplot(ax=ax1, data=temp2, x='year', y='ghg', hue='Product Category', palette=sns.color_palette(color_list))
+sns.barplot(ax=ax1, data=temp2, x='year', y='ghg', hue='Product Category', palette=sns.color_palette(color_list), edgecolor='k')
 ax1.legend(bbox_to_anchor=(2, 1))
 # axis right
 ax2 = ax1.twinx()
