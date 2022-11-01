@@ -18,7 +18,7 @@ data <- all_data %>%
 
 results <- data.frame()
 product_list <- distinct(dplyr::select(data, Product))$Product
-for (item in c('all', 'age_group_hrp', 'hhd_type', 'gor modified', 'income_group')){
+for (item in c('all', 'age_group_hrp', 'income_group')){
   for (pt in product_list){
     for (cpi in c('cpi', 'regular')){
       # add results by year

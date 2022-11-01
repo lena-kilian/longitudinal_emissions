@@ -63,6 +63,7 @@ data_comp['group_cat'] = data_comp['group'].astype('category').cat.set_categorie
 
 data_comp = data_comp.sort_values('group_cat')
 
+check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_3', 'type', 'group_cat']).unstack(level='level_3')
 
 colors = ["#E1BCA7", "#B0C7D4"]
 for cpi in ['with_cpi', 'regular']:

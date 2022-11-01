@@ -56,16 +56,11 @@ for year in list(temp.keys()):
     else:
         temp[year]['cpi'] = 'regular'
     
-    hhd_ghg = hhd_ghg.append(temp[year].reset_index()[['case', 'year', 'cpi', 'hhd_type', 'age_group_hrp', 'income_group', 'gor modified', 'all', 'income anonymised'] + vars_ghg])
+    hhd_ghg = hhd_ghg.append(temp[year].reset_index()[['case', 'year', 'cpi', 'age_group_hrp', 'income_group', 'all', 'income anonymised'] + vars_ghg])
 
 income_dict = dict(zip(list(range(10)),
                        ['Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']))
 hhd_ghg['income_group'] = hhd_ghg['income_group'].map(income_dict)
-
-region_dict = dict(zip(list(range(1, 13)),
-                       ['North East', 'North West and Merseyside', 'Yorkshire and the Humber', 'East Midlands'	,
-                       'West Midlands', 'Eastern', 'London', 'South East', 'South West', 'Wales', 'Scotland', 'Northern Ireland']))
-hhd_ghg['gor modified'] = hhd_ghg['gor modified'].map(region_dict)
 
 hhd_ghg.to_csv(wd + 'data/processed/GHG_Estimates_LCFS/Regression_data.csv')
     
