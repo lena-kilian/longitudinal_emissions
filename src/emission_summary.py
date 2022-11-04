@@ -35,7 +35,7 @@ vars_ghg = ['Food and Drinks', 'Other consumption', 'Recreation, culture, and cl
 
 vars_weighted_means = ['age hrp', 'income anonymised',  'age_adults_mean', 'age_minors_mean', 'age_all_mean']
 
-vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people aged <18', 'rooms in accommodation']
+vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people aged <18', 'rooms in accommodation', 'hhld_oecd_equ', '16+']
     
     
 # import data
@@ -179,30 +179,36 @@ results['group'] = results['group'].str.replace('Group ', '')
 hhd_ghg[2020] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2020.csv')
 hhd_ghg['2020_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_2020_cpi.csv')
 
-group_dict = {'Average':'all_households', 
-              'income_decile_1':'Lowest', 'income_decile_2':'2nd', 'income_decile_3':'3rd', 'income_decile_4':'4th', 'income_decile_5':'5th', 
-              'income_decile_6':'6th', 'income_decile_7':'7th', 'income_decile_8':'8th', 'income_decile_9':'9th', 'income_decile_10':'Highest',
-              'age_group_18_29':'18-29', 'age_group_30_49':'30-49', 'age_group_50_64':'50-64', 'age_group_65_74':'65-74', 'age_group_75':'75+'}
-              # 40-49, 80+
-
 for year in [2020, '2020_cpi']:
     hhd_ghg[year]['year'] = 2020
     if str(year)[-3:] == 'cpi':
         hhd_ghg[year]['cpi'] = 'with_cpi'
+        temp = results.loc[(results['year']==2019) & (results['cpi'] == 'with_cpi')]
     else:
         hhd_ghg[year]['cpi'] = 'regular'
+        temp = results.loc[(results['year']==2019) & (results['cpi'] == 'with_cpi')]
     hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
-    hhd_ghg[year] = hhd_ghg[year].rename(columns={'case':'group', 'COICOP4_code':'group_var'})
+    hhd_ghg[year] = hhd_ghg[year].rename(columns={'case':'group'})
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
-    hhd_ghg[year]['group'] = hhd_ghg[year]['group'].map(group_dict)
     hhd_ghg[year]['group_var'] = hhd_ghg[year]['group_var'].map({'All':'all', 'Age of HRP':'age_group_hrp', 'Income decile':'income_group'})
+    hhd_ghg[year] = hhd_ghg[year].drop('no people', axis=1).merge(temp[['group', 'hhld_oecd_equ', '16+', 'no people']], on='group')
     
     hhd_ghg[year][vars_ghg] = hhd_ghg[year][vars_ghg].apply(lambda x: x/hhd_ghg[year]['no people'])
+    
+    
     idx = results.columns.tolist()
     results = results.append(hhd_ghg[year])[idx]
 
 results['pc_income'] = results['income anonymised'] / results['no people'] 
 results['hhd_income_scaled'] = results['income anonymised'] / results['income anonymised'].max() * 100
 results['pc_income_scaled'] = results['pc_income'] / results['pc_income'].max() * 100
+
+# add equivalised results
+results['pc'] = 'no people'
+temp = cp.copy(results)
+temp[vars_ghg + ['pc_income']] = temp[vars_ghg + ['pc_income']].apply(lambda x: x*temp['no people']/temp['hhld_oecd_equ'])
+temp['pc'] = 'hhld_oecd_equ'
+results = results.append(temp)
+
 
 results.to_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')

@@ -78,16 +78,15 @@ for year in list(lcfs.keys()):
         people[year] = people[year].join(temp[['hhld_oecd_mod']])
         # OECD equivalence scale
         temp['hhld_oecd_equ'] = temp['hhld_oecd_equ'] + ((temp['16+'] - 1) * 0.7) + (temp['<16'] * 0.5)
-        people[year] = people[year].join(temp[['hhld_oecd_equ']])
+        people[year] = people[year].join(temp[['hhld_oecd_equ', '16+']])
         
         #
         people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop]
         q = ps.Quantiles(people[year]['pc_income'], k=10)
         people[year]['income_group'] = people[year]['pc_income'].map(q)
     else:
-        lcfs[year] = lcfs[year].rename(columns={'Weighted average number of persons per household':'no people', 
-                                                'Weighted number of households (thousands)':'weight'})
-        people[year] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1]
+        var_list = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].columns.tolist()
+        people[year] = lcfs[year].drop(var_list, axis=1).rename(columns={'COICOP4_code':'group_var'})
         people[year]['pc_income'] = people[year]['income anonymised'] / people[year]['no people']
     
     # gather spend      

@@ -54,7 +54,7 @@ for year in years:
 
     
 # add 2020 data
-lcfs[2020] = pd.read_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv', index_col=[0, 1], header=[0]).fillna(0)
+lcfs[2020] = pd.read_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted_2.csv', index_col=[0], header=[0]).fillna(0)
 # adjust income to LCFS by prop of income data
 lcfs[2020].columns = [str(x) for x in lcfs[2020].columns]
 
@@ -144,7 +144,10 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
     hhdspend_cpi[year] = cp.copy(lcfs[year])
     
     # adjust income
-    hhdspend_cpi[year]['income anonymised'] = hhdspend_cpi[year]['income anonymised'] / inflation[str(year)]
+    if year == 2020:
+        hhdspend_cpi[year]['income anonymised'] = hhdspend_cpi[year]['income anonymised'] / inflation['2019'] # use 2019, as 2020 data is already adjusted to 2019 prices
+    else:
+        hhdspend_cpi[year]['income anonymised'] = hhdspend_cpi[year]['income anonymised'] / inflation[str(year)]
     
     # save order of coicop cats    
     order = hhdspend_cpi[year].columns.tolist()
@@ -156,7 +159,10 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
         cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP4_index']))
     
     for item in hhdspend_cpi[year].loc[:,'1.1.1.1':'12.5.3.5'].columns:
-        hhdspend_cpi[year][item] = hhdspend_cpi[year][item] * (100 / float(cpi.loc[cpi_dict[item], str(year)])) # check again that this is correct
+        if year == 2020:
+            hhdspend_cpi[year][item] = hhdspend_cpi[year][item] * (100 / float(cpi.loc[cpi_dict[item], '2019'])) # use 2019, as 2020 data is already adjusted to 2019 prices
+        else:
+            hhdspend_cpi[year][item] = hhdspend_cpi[year][item] * (100 / float(cpi.loc[cpi_dict[item], str(year)])) # check again that this is correct
     
     if year != 2020:
         # adjust to physical units
@@ -200,8 +206,8 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
         hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.4.1', '4.4.2'], axis=1).join(temp[['4.4.1', '4.4.2']])
         
     else:
-        temp = hhdspend_cpi[year][['Weighted number of households (thousands)', '4.4.1', '4.4.2']]
-        temp[['4.4.1', '4.4.2']] = temp[['4.4.1', '4.4.2']].apply(lambda x: x*hhdspend_cpi[year]['Weighted number of households (thousands)'])
+        temp = hhdspend_cpi[year].set_index('COICOP4_code', append=True)[['weight', '4.4.1', '4.4.2']].swaplevel(axis=0)
+        temp[['4.4.1', '4.4.2']] = temp[['4.4.1', '4.4.2']].apply(lambda x: x*temp['weight'])
         temp = temp.join(temp.sum(axis=0, level=0), rsuffix='_sum')
         # get weighted sums of ref year
         total_spend_ry_elec = np.sum(hhdspend_cpi[ref_year]['4.4.1'] * hhdspend_cpi[ref_year]['weight'])
@@ -212,8 +218,9 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
         # estimate new gas and elec exp. adjusted to consumption proportions
         temp['4.4.1'] = temp['4.4.1'] / temp['4.4.1_sum'] * total_spend_new_elec
         temp['4.4.2'] = temp['4.4.2'] / temp['4.4.2_sum'] * total_spend_new_gas
-        temp[['4.4.1', '4.4.2']] = temp[['4.4.1', '4.4.2']].apply(lambda x: x/hhdspend_cpi[year]['Weighted number of households (thousands)'])
-        hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.4.1', '4.4.2'], axis=1).join(temp[['4.4.1', '4.4.2']])
+        temp[['4.4.1', '4.4.2']] = temp[['4.4.1', '4.4.2']].apply(lambda x: x/temp['weight'])
+        hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.4.1', '4.4.2'], axis=1).join(temp[['4.4.1', '4.4.2']].droplevel(axis=0, level=0))        
+        
         
     # clean data
     hhdspend_cpi[year] = hhdspend_cpi[year][order]
