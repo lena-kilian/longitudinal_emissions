@@ -53,7 +53,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
     data_annual = data_ghg.loc[data_ghg['year'] != 'all'] 
     data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
     
-    inc_max = data_ghg.groupby('cpi').max()['pc_income'] *1.05
+    inc_max = data_ghg.groupby('cpi').max()['pc_income'] *1.025
     
     ##################################
     # Calculate mean change per year #
@@ -262,7 +262,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
                 plt.show()
     """
                 
-    
+    """
     # plots by group
     color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
     data_plot = cp.copy(data_annual)
@@ -299,7 +299,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
             plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + group_var + '_'  + name + '_' + cpi + '_' + pc + '.png',
                         bbox_inches='tight', dpi=300)
             plt.show()
-            
+    """
     
     # plots by group
     color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']

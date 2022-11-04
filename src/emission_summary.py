@@ -201,6 +201,8 @@ for year in [2020, '2020_cpi']:
     results = results.append(hhd_ghg[year])[idx]
 
 # add equivalised results
+results[vars_ghg] = results[vars_ghg].apply(lambda x: x*results['no people'])
+
 results['pc'] = 'no people'
 temp = cp.copy(results)
 temp['no people'] = temp['hhld_oecd_equ']
@@ -208,6 +210,7 @@ temp['pc'] = 'hhld_oecd_equ'
 results = results.append(temp)
 
 results['pc_income'] = results['income anonymised'] / results['no people'] 
+results[vars_ghg] = results[vars_ghg].apply(lambda x: x/results['no people'])
 
 results = results.drop('hhld_oecd_equ', axis=1)
 

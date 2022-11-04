@@ -54,7 +54,7 @@ for year in years:
 
     
 # add 2020 data
-lcfs[2020] = pd.read_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted_2.csv', index_col=[0], header=[0]).fillna(0)
+lcfs[2020] = pd.read_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv', index_col=[0], header=[0]).fillna(0)
 # adjust income to LCFS by prop of income data
 lcfs[2020].columns = [str(x) for x in lcfs[2020].columns]
 

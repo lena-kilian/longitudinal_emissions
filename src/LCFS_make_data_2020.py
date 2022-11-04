@@ -53,22 +53,15 @@ for item in ['age_group_hrp', 'income_group', 'all']: #'hhd_type','gor modified'
     # household level
     temp[vars_ghg] = temp[vars_ghg].apply(lambda x: x * temp['weight'])
     temp = temp.groupby(item).sum()
-    temp[vars_ghg] = temp[vars_ghg].apply(lambda x: x / temp['pop'])
+    temp[vars_ghg] = temp[vars_ghg].apply(lambda x: x / temp['weight'])
     results = results.append(temp)
 results_2019 = results[vars_ghg].T
-ccp3 = []
-for item in results_2019.index:
-    if item.count('.') > 2:
-        x = str(item).split('.')[0] + '.' + str(item).split('.')[1] + '.' + str(item).split('.')[2]
-    else:
-        x = str(item)
-    ccp3.append(x)
-results_2019['COICOP3_code'] = ccp3
 
-multiplier = pd.read_excel(wd + 'data/raw/LCFS/LCFS_aggregated_2020.xlsx', sheet_name='Multipliers', header=[1]).iloc[:,:23].fillna(0)
-multiplier = results_2019.reset_index()[['index', 'COICOP3_code']].merge(multiplier, on='COICOP3_code', how='left').set_index('index')
 
-groups = results_2019.columns.tolist()[:-1]
+multiplier = pd.read_excel(wd + 'data/raw/LCFS/LCFS_aggregated_2020.xlsx', sheet_name='Multipliers_ccp4', header=0, index_col=0).fillna(0)
+multiplier.index = [str(x) for x in multiplier.index]
+
+groups = results_2019.columns.tolist()
 results_2020 = cp.copy(results_2019)
 for item in groups:
     results_2020 = results_2020.join(multiplier[[item]], rsuffix='_m')
@@ -121,5 +114,5 @@ temp = temp[var_list].apply(lambda x: x/temp['weight'])
 
 hhdspend_cpi = hhdspend_cpi.drop(var_list, axis=1).join(temp.droplevel(axis=0, level=1))
 
-hhdspend_cpi.to_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted_2.csv')
+hhdspend_cpi.to_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv')
 

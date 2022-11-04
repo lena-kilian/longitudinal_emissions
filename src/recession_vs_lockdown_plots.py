@@ -66,6 +66,7 @@ data_comp = data_comp.sort_values('group_cat')
 
 check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_4', 'type', 'group_cat', 'pc']).unstack(level='level_4')
 
+"""
 colors = ["#E1BCA7", "#B0C7D4"]
 for cpi in ['with_cpi', 'regular']:
     for group in data_comp[['group_var']].drop_duplicates()['group_var']:
@@ -278,3 +279,4 @@ for cpi in ['with_cpi', 'regular']:
             axs[r, c].set_title(gr)
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_grid_comp_recession_lockdown_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=300)
         plt.show() 
+"""
