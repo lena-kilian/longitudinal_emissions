@@ -206,7 +206,7 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
         hhdspend_cpi[year] = hhdspend_cpi[year].drop(['4.4.1', '4.4.2'], axis=1).join(temp[['4.4.1', '4.4.2']])
         
     else:
-        temp = hhdspend_cpi[year].set_index('COICOP4_code', append=True)[['weight', '4.4.1', '4.4.2']].swaplevel(axis=0)
+        temp = hhdspend_cpi[year].set_index('group_var', append=True)[['weight', '4.4.1', '4.4.2']].swaplevel(axis=0)
         temp[['4.4.1', '4.4.2']] = temp[['4.4.1', '4.4.2']].apply(lambda x: x*temp['weight'])
         temp = temp.join(temp.sum(axis=0, level=0), rsuffix='_sum')
         # get weighted sums of ref year

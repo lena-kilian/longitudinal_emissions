@@ -189,6 +189,7 @@ for year in [2020, '2020_cpi']:
         temp = results.loc[(results['year']==2019) & (results['cpi'] == 'with_cpi')]
     hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
     hhd_ghg[year] = hhd_ghg[year].rename(columns={'case':'group'})
+    hhd_ghg[year].loc[hhd_ghg[year]['group'] == 'all', 'group'] = 'all_households'
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     hhd_ghg[year]['group_var'] = hhd_ghg[year]['group_var'].map({'All':'all', 'Age of HRP':'age_group_hrp', 'Income decile':'income_group'})
     hhd_ghg[year] = hhd_ghg[year].drop('no people', axis=1).merge(temp[['group', 'hhld_oecd_equ', '16+', 'no people']], on='group')
@@ -199,16 +200,15 @@ for year in [2020, '2020_cpi']:
     idx = results.columns.tolist()
     results = results.append(hhd_ghg[year])[idx]
 
-results['pc_income'] = results['income anonymised'] / results['no people'] 
-results['hhd_income_scaled'] = results['income anonymised'] / results['income anonymised'].max() * 100
-results['pc_income_scaled'] = results['pc_income'] / results['pc_income'].max() * 100
-
 # add equivalised results
 results['pc'] = 'no people'
 temp = cp.copy(results)
-temp[vars_ghg + ['pc_income']] = temp[vars_ghg + ['pc_income']].apply(lambda x: x*temp['no people']/temp['hhld_oecd_equ'])
+temp['no people'] = temp['hhld_oecd_equ']
 temp['pc'] = 'hhld_oecd_equ'
 results = results.append(temp)
 
+results['pc_income'] = results['income anonymised'] / results['no people'] 
+
+results = results.drop('hhld_oecd_equ', axis=1)
 
 results.to_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')

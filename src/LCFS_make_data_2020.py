@@ -75,17 +75,11 @@ for item in groups:
     results_2020[item] = results_2020[item] * results_2020[item + '_m']
     
 results_2020 = results_2020[groups]
-results_2020 = results_2020.T.join(results[['pop', 'weight']])
-results_2020['no people'] = results_2020['pop'] / results_2020['weight']
 
-income = pd.read_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv', index_col=[0], header=[0]).fillna(0)
-income['case'] = income['case'].map({'Average':'all', 'income_decile_1':'Lowest', 'income_decile_2':'2nd', 'income_decile_3':'3rd',
-                                     'income_decile_4':'4th', 'income_decile_5':'5th', 'income_decile_6':'6th', 'income_decile_7':'7th',
-                                     'income_decile_8':'8th', 'income_decile_9':'9th', 'income_decile_10':'Highest', 'age_group_18_29':'18-29',
-                                     'age_group_30_49':'30-49', 'age_group_50_64':'50-64', 'age_group_65_74':'65-74', 'age_group_75':'75+'})
-income = income.reset_index().set_index('case')
+income = pd.read_excel(wd + 'data/raw/LCFS/LCFS_aggregated_2020.xlsx', sheet_name='Income', header=[0], index_col=0).fillna(0).T
 
-results_2020 = results_2020.join(income[['COICOP4_code', 'income anonymised']])
+results_2020 = results_2020.T.join(income)
+results_2020['pop'] = results_2020['weight'] * results_2020['no people']
 
 
 # load CPI corrector data
@@ -109,11 +103,7 @@ hhdspend_cpi = cp.copy(results_2020)
 
 cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP4_index']))
 
-inflation = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0).loc[['2019', '2020'], 'CPI INDEX 00: ALL ITEMS 2015=100']\
-        .T.dropna(how='all').astype(float)
-inflation = inflation.apply(lambda x: x/inflation['2019'])
-
-hhdspend_cpi['income anonymised'] = hhdspend_cpi['income anonymised'] / inflation['2020']
+# don't adjust income, as this is already in 2019 values
 
 for item in hhdspend_cpi.loc[:,'1.1.1.1':'12.5.3.5'].columns:
     hhdspend_cpi[item] = hhdspend_cpi[item] * (100 / float(cpi.loc[cpi_dict[item], '2020'])) # check again that this is correct
@@ -121,10 +111,11 @@ for item in hhdspend_cpi.loc[:,'1.1.1.1':'12.5.3.5'].columns:
 
 # make sure that groups add up to average
 var_list = hhdspend_cpi.loc[:,'1.1.1.1':'12.5.3.5'].columns.tolist() + ['income anonymised']
-temp = cp.copy(hhdspend_cpi.set_index('COICOP4_code', append=True))
+temp = cp.copy(hhdspend_cpi.set_index('group_var', append=True))
 temp[var_list] = temp[var_list].apply(lambda x: x*temp['weight'])
 temp = temp.join(temp[var_list].sum(axis=0, level=1), rsuffix='_sum')
 for item in var_list:
+    temp.loc[temp[item + '_sum'] == 0, item + '_sum'] = 0.01
     temp[item] = temp[item] / temp[item + '_sum'] * temp.loc[('all', 'All'), item + '_sum']
 temp = temp[var_list].apply(lambda x: x/temp['weight'])
 

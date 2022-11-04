@@ -53,14 +53,17 @@ for pc in ['no people', 'hhld_oecd_equ']:
     data_annual = data_ghg.loc[data_ghg['year'] != 'all'] 
     data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
     
-    inc_max = data_ghg['pc_income'].max() *1.05
+    inc_max = data_ghg.groupby('cpi').max()['pc_income'] *1.05
     
     ##################################
     # Calculate mean change per year #
     ##################################
     
     data_plot = data_annual.loc[(data_annual['group'] == 'All households') & (data_annual['cpi'] == 'regular')]
+    
+    """
     sns.barplot(data=data_plot, y='year', x='Total', hue='cpi')
+    """
     
     years = list(range(2001, 2021))
     # in tCO2e/capita
@@ -86,39 +89,47 @@ for pc in ['no people', 'hhld_oecd_equ']:
     mean_change_pct = mean_change_pct[keep].mean(axis=1).unstack(level=None)
     
     
-    
     ############################
     # Lineplots all households #
     ############################
     
     # All households
-    data_plot = data_annual.loc[data_annual['group'] == 'All households'].set_index(['year', 'cpi'])[vars_ghg[:-1]].stack()\
+    data_plot = data_annual.loc[data_annual['group'] == 'All households'].set_index(['year', 'cpi'])[vars_ghg[:-1] + ['pc_income']].stack()\
         .reset_index().rename(columns={'level_2':'Product Category', 0:'ghg'})
         
     # Plot
     # Linegraph values
     for cpi in ['regular', 'with_cpi']:
-        temp = data_plot.loc[data_plot['cpi'] == cpi]
+        temp = data_plot.loc[(data_plot['cpi'] == cpi) & (data_plot['Product Category'] != 'pc_income')]
         fig, ax = plt.subplots(figsize=(7.5, 5))
         sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', palette='colorblind')
         ax.set_ylabel(axis); ax.set_xlabel('Year')
-        plt.legend(bbox_to_anchor=(1.6, 0.75))
-        plt.ylim(0, 4.5)
+        ax.legend(bbox_to_anchor=(1.6, 0.75))
+        ax.set_ylim(0, 5.5)
+        
+        temp = data_plot.loc[(data_plot['cpi'] == cpi) & (data_plot['Product Category'] == 'pc_income')]
+        temp['Product Category'] = 'Weekly income'
+        style = {key:value for key,value in zip(temp['Product Category'].unique(), sns._core.unique_dashes(temp['Product Category'].unique().size+1)[1:])}
+        ax2 = ax.twinx()
+        sns.lineplot(ax=ax2, data=temp, x='year', y='ghg', hue='Product Category', style='Product Category', 
+                     dashes=style, palette=sns.color_palette(['k']))
+        ax2.set_ylabel('GBP / capita')
+        ax2.legend(bbox_to_anchor=(1.6, 0.25))
+        ax2.set_ylim(0, 375)
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_' + cpi + '_' + pc + '.png', bbox_inches='tight', dpi=300)
         plt.show()
-        
     
     temp = cp.copy(data_plot); temp['cpi'] = temp['Prices & Multipliers'] = temp['cpi'].map({'with_cpi':'2007 prices and multipliers', 'regular':'Own year'})
     fig, ax = plt.subplots(figsize=(7.5, 4))
     sns.lineplot(ax=ax, data=temp, x='year', y='ghg', hue='Product Category', palette='colorblind', style='Prices & Multipliers')
     ax.set_ylabel(axis); ax.set_xlabel('Year')
     plt.legend(bbox_to_anchor=(1.525, 0.9))
-    plt.ylim(0, 4.25)
+    plt.ylim(0, 5.5)
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_both_' + pc + '.png', bbox_inches='tight', dpi=300)
     plt.show()
     
     
-    
+    """
     check = data_plot.loc[data_plot['Product Category'] == 'Air transport'].set_index(['year', 'cpi', 'Product Category']).unstack(level='cpi')
     # Linegraph w/ percentage
     data_pct = data_plot.set_index(['year', 'cpi', 'Product Category']).unstack(level=[0])
@@ -139,14 +150,14 @@ for pc in ['no people', 'hhld_oecd_equ']:
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_pct_' + pc + '.png',
                     bbox_inches='tight', dpi=300)
         plt.show()
-        
+    """
     
     ############################
     # Barplots by demographics #
     ############################
     
     # All Years
-    
+    """
     # next to each other
     data_plot = cp.copy(data_allyears)
     for cpi in ['regular', 'with_cpi']:
@@ -163,6 +174,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
             plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_HHDs_' + item + '_' + cpi + '_' + pc + '.png',
                         bbox_inches='tight', dpi=300)
             plt.show()
+    """
     
     # stacked
     color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
@@ -187,7 +199,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
                 ax1.bar(bottom=start, height=height, x=temp.index, color=color_list[i])
                 start += height
             ax1.set_ylabel(axis)
-            ax1.set_ylim(0, 30)
+            ax1.set_ylim(0, 35)
             if item == 'income_group':
                 xloc = 1.1
             elif item == 'hhd_type':
@@ -202,7 +214,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
             ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
             ax2.scatter(income.index, income['pc_income'], color='k')
             ax2.set_ylabel('Income per capita (weekly)')
-            ax2.set_ylim(0, inc_max)
+            ax2.set_ylim(0, inc_max[cpi])
             #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
             # modify plot
             plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + item + '_' + cpi + '_allyears_' + pc + '.png',
@@ -210,6 +222,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
             plt.show() 
             
     # Individual Years
+    """
     # plots by years
     color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
     data_plot = cp.copy(data_annual)
@@ -232,7 +245,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
                     ax1.bar(bottom=start, height=height, x=temp.index, color=color_list[i])
                     start += height
                 ax1.set_ylabel(axis)
-                ax1.set_ylim(0, 30)
+                ax1.set_ylim(0, 35)
                 plt.legend(temp.columns, bbox_to_anchor=(2, 1))
                 plt.xlabel(group_dict[item])
                 plt.xticks(rotation=90)
@@ -241,19 +254,20 @@ for pc in ['no people', 'hhld_oecd_equ']:
                 ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
                 ax2.scatter(income.index, income['pc_income'], color='k')
                 ax2.set_ylabel('Income per capita (weekly)')
-                ax2.set_ylim(0, inc_max)
+                ax2.set_ylim(0, inc_max[cpi])
                 plt.legend(['Income'], bbox_to_anchor=(1.5, 0.5))
                 # modify plot
                 plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + item + '_' + cpi + '_' + str(year) + '_' + pc + '.png',
                             bbox_inches='tight', dpi=300)
                 plt.show()
+    """
                 
     
     # plots by group
     color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
     data_plot = cp.copy(data_annual)
     for cpi in ['regular', 'with_cpi']:
-        for item in data_plot[['group']].drop_duplicates()['group']:
+        for item in ['All households', 'Highest', 'Lowest', '18-29', '75+']:#data_plot[['group']].drop_duplicates()['group']:
             temp = data_plot.loc[(data_plot['group'] == item) & 
                                  (data_plot['cpi'] == cpi)].set_index('year')
             group_var = temp['group_var'][0]
@@ -269,7 +283,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
                 ax1.bar(bottom=start, height=height, x=[str(x)[:4] for x in temp.index], color=color_list[i])
                 start += height
             ax1.set_ylabel(axis)
-            ax1.set_ylim(0, 30)
+            ax1.set_ylim(0, 35)
             plt.xlabel('Year')
             plt.xticks(rotation=90)
             # axis right
@@ -277,7 +291,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
             ax2.plot([str(x)[:4] for x in income.index], income['pc_income'], color='k', lw=2, linestyle='--')
             ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
             ax2.set_ylabel('Income per capita (weekly)')
-            ax2.set_ylim(0, inc_max)
+            ax2.set_ylim(0, inc_max[cpi])
             #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
             # modify plot
             plt.title(cpi + ' ' + group_dict[group_var] + '\n\n ' + item.replace('\n', ' '))
@@ -307,7 +321,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
                 ax1.bar(bottom=start, height=height, x=[str(x)[:4] for x in temp.index], color=color_list[i], linewidth=0.5, edgecolor='k')
                 start += height
             ax1.set_ylabel(axis)
-            ax1.set_ylim(0, 30)
+            ax1.set_ylim(0, 35)
             ax1.axvline(1.5, c='k', ls='--', lw=0.5)
             plt.xlabel('Year')
             plt.xticks(rotation=90)
@@ -315,9 +329,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
             ax2 = ax1.twinx()
             ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
             ax2.set_ylabel('Income per capita (weekly)')
-            if cpi == 'with_cpi':
-                inc_max = 800
-            ax2.set_ylim(0, inc_max)
+            ax2.set_ylim(0, inc_max[cpi])
             #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
             # modify plot
             plt.title(item.replace('\n', ' '))
@@ -336,9 +348,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
     ax2 = ax1.twinx()
     ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
     ax2.set_ylabel('Income per capita (weekly)')
-    if cpi == 'with_cpi':
-        inc_max = 800
-    ax2.set_ylim(0, inc_max)
+    ax2.set_ylim(0, inc_max[cpi])
     ax2.legend(['Income'], bbox_to_anchor=(4, 0.5))
     # modify plot
     plt.title('LEGEND ONLY')
@@ -347,6 +357,7 @@ for pc in ['no people', 'hhld_oecd_equ']:
                 bbox_inches='tight', dpi=300)
     plt.show()
     
+    """
     #############################
     # Lineplots by demographics #
     #############################
@@ -410,3 +421,4 @@ for pc in ['no people', 'hhld_oecd_equ']:
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/Lineplots_highest_lowest_' + pc + '.png',
                 bbox_inches='tight', dpi=300)
     plt.show()
+    """

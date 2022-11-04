@@ -38,6 +38,7 @@ vars_ghg_dict = ['Food and\nDrinks', 'Housing, water\nand waste', 'Electricity, 
 group_dict = {'hhd_type':'Household Composition', 'age_group_hrp':'Age of HRP', 'gor modified':'Region', 
               'income_group':'Income Decile', 'all':'All'}
 
+
 # import data
 data_ghg = pd.read_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')
 data_ghg = data_ghg.loc[(data_ghg['group'] != '0') & (data_ghg['group'] != 'Other')]
@@ -48,7 +49,7 @@ data_comp['type'] = data_comp['year'].map({'2007':'2007-2009', '2009':'2007-2009
 data_comp['year_type'] = data_comp['year'].map({'2007':'First year', '2009':'Last year', '2019':'First year', '2020':'Last year'})
 #data_comp['index'] = list(range(len(data_comp)))
 
-data_comp = data_comp.set_index(['type', 'year_type', 'cpi', 'group', 'group_var'])[vars_ghg + ['pc_income']].unstack(level=['type', 'year_type'])\
+data_comp = data_comp.set_index(['type', 'year_type', 'cpi', 'group', 'group_var', 'pc'])[vars_ghg + ['pc_income']].unstack(level=['type', 'year_type'])\
     .swaplevel(axis=1).swaplevel(axis=1, i=0, j=1).swaplevel(axis=1, i=2, j=1)
 
 for event in ['2007-2009', '2019-2020']:
@@ -63,7 +64,7 @@ data_comp['group_cat'] = data_comp['group'].astype('category').cat.set_categorie
 
 data_comp = data_comp.sort_values('group_cat')
 
-check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_3', 'type', 'group_cat']).unstack(level='level_3')
+check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_4', 'type', 'group_cat', 'pc']).unstack(level='level_4')
 
 colors = ["#E1BCA7", "#B0C7D4"]
 for cpi in ['with_cpi', 'regular']:
