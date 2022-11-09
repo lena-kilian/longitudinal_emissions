@@ -59,12 +59,14 @@ for event in ['2007-2009', '2019-2020']:
         
 data_comp = data_comp.stack().stack().reset_index()
 
-order = ['18-29', '30-49', '50-64', '65-74', '75+', 'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest', 'All households']
+order = ['All households', '18-29', '30-49', '50-64', '65-74', '75+', 'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']
 data_comp['group_cat'] = data_comp['group'].astype('category').cat.set_categories(order, ordered=True)
 
 data_comp = data_comp.sort_values('group_cat')
 
-check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_4', 'type', 'group_cat', 'pc']).unstack(level='level_4')
+check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_4', 'type', 'group_cat', 'pc']).unstack(level='level_4').stack(level=0)[
+    ['pc_income', 'Total', 'Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 'Private and public road transport', 
+     'Air transport', 'Recreation, culture, and clothing', 'Other consumption']].reset_index().sort_values(['year_type', 'pc', 'cpi', 'type', 'group_cat'])
 
 """
 colors = ["#E1BCA7", "#B0C7D4"]

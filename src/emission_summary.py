@@ -214,4 +214,11 @@ results[vars_ghg] = results[vars_ghg].apply(lambda x: x/results['no people'])
 
 results = results.drop('hhld_oecd_equ', axis=1)
 
+results['group'] = results['group'].str.replace('all_households', 'All households')
+
 results.to_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')
+
+order = ['All households', 'Other', '18-29', '30-49', '50-64', '65-74', '75+', 'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']
+results['group_cat'] = results['group'].astype('category').cat.set_categories(order, ordered=True)
+results = results.sort_values(['year', 'pc', 'cpi', 'group_cat'])
+

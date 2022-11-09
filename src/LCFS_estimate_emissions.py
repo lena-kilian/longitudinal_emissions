@@ -20,6 +20,7 @@ import pandas as pd
 import estimate_emissions_main_function_2021 as estimate_emissions
 import copy as cp
 import pysal as ps
+import pickle
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -28,7 +29,7 @@ ref_year = 2007 # choose year which expenditure is adjusted to (by CPI)
 hhd_type_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp3_lookup.xlsx', sheet_name='hhd_type')
 
 years = list(range(2001, 2021))
-pop = 'no people' # change this to oecd equivalised scale if needed
+pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
 
 # load LFC data
 lcfs = {}
@@ -84,6 +85,8 @@ for year in list(lcfs.keys()):
         people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop]
         q = ps.Quantiles(people[year]['pc_income'], k=10)
         people[year]['income_group'] = people[year]['pc_income'].map(q)
+        people[year]['pc_income'] = people[year]['income anonymised'] / people[year]['no people']
+        
     else:
         var_list = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].columns.tolist()
         people[year] = lcfs[year].drop(var_list, axis=1).rename(columns={'COICOP4_code':'group_var'})
@@ -99,6 +102,9 @@ hhd_ghg, multipliers = estimate_emissions.make_footprint({y:lcfs[y] for y in yea
 ##########
 ## SAVE ##
 ##########
+
+# save multipliers
+pickle.dump(multipliers, open(wd + 'data/processed/GHG_Estimates_LCFS/Multipliers_2007-2019.p','wb'))
  
 # save emissions using their own year multipliers
 for year in years:

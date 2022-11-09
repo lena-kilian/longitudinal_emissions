@@ -46,7 +46,6 @@ for year in list(range(2001, 2020)):
 # edit variables where needed
 for year in list(temp.keys()):
     temp[year] = temp[year].rename(columns=cat_dict).sum(axis=1, level=0).set_index('case')
-    temp[year][vars_ghg[:-1]] = temp[year][vars_ghg[:-1]].apply(lambda x: x*temp[year]['no people'])
     
     temp[year]['Total'] = temp[year][vars_ghg[:-1]].sum(1)
     temp[year]['all'] = 'all_households'

@@ -84,7 +84,8 @@ for group in data[['group_var']].drop_duplicates()['group_var']:
                     color=col_list, edgecolor='black', linewidth=0.2, width=0.85) 
     g.add_legend()
     plt.axhline(0, linestyle='--', c='black', lw=0.5)
-    plt.ylim(-0.2, 4.5)
+    plt.axhline(1, linestyle='--', c='black', lw=0.5)
+    plt.ylim(-0.275, 4.1)
     plt.ylabel('Income elasticity of emissions')
     plt.xlabel('')
     #plt.title('                                                                                                                                                                              ')
@@ -93,8 +94,7 @@ for group in data[['group_var']].drop_duplicates()['group_var']:
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/elasticities_regression_allyears_' + group + '.png', bbox_inches='tight', dpi=200)
     plt.show()
 
-check = results_all_years.set_index(['product_cat', 'group_cat'])[['elasticity', 'ci_low', 'ci_up']].unstack(level='product_cat')
-
+'''
 # make plot for all households with error bars
 data = cp.copy(results_all_years)
 data = data.loc[data['group'] == 'all_households'].drop('group_var', axis=1).drop_duplicates()
@@ -445,3 +445,4 @@ for group in results_og[['group_var']].drop_duplicates()['group_var'].tolist():
         # save figure
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/elasticities_regression_all_households_styleBar_' + group + '_' + str(year) + '.png', bbox_inches='tight', dpi=200)
         plt.show()
+'''

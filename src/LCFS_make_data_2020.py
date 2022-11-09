@@ -17,6 +17,8 @@ import pysal as ps
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
+pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
+
 # Load LCFS data
 dvhh_file = wd + 'data/raw/LCFS/2019-2020/tab/2019-2020_dvhh_ukanon.tab'
 dvper_file = wd + 'data/raw/LCFS/2019-2020/tab/2019-2020_dvper_ukanon.tab'
@@ -26,15 +28,31 @@ lcfs_2019 = lcfs_2019.reset_index()
 lcfs_2019.columns = [x.lower() for x in lcfs_2019.columns]
 lcfs_2019 = lcfs_2019.set_index('case') 
 
+# OECD household equivalent scales
+# https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
+temp = cp.copy(lcfs_2019)
+temp['<16'] =  temp['people aged <18'] - temp['people aged 16-17']
+temp['16+'] = temp['no people'] - temp['<16']
+temp['hhld_oecd_mod'] = 0
+temp.loc[temp['16+'] > 0, 'hhld_oecd_mod'] = 1
+temp['hhld_oecd_equ'] = temp['hhld_oecd_mod']
+# OECD-modified scale
+temp['hhld_oecd_mod'] = temp['hhld_oecd_mod'] + ((temp['16+'] - 1) * 0.5) + (temp['<16'] * 0.3)
+lcfs_2019 = lcfs_2019.join(temp[['hhld_oecd_mod']])
+# OECD equivalence scale
+temp['hhld_oecd_equ'] = temp['hhld_oecd_equ'] + ((temp['16+'] - 1) * 0.7) + (temp['<16'] * 0.5)
+lcfs_2019 = lcfs_2019.join(temp[['hhld_oecd_equ', '16+']])
+
 # edit variables where needed
 lcfs_2019['pop'] = lcfs_2019['weight'] * lcfs_2019['no people']      
 lcfs_2019['all'] = 'all'
 
-lcfs_2019['pc_income'] = lcfs_2019['income anonymised'] / lcfs_2019['no people']
+lcfs_2019['pc_income'] = lcfs_2019['income anonymised'] / lcfs_2019[pop]
 q = ps.Quantiles(lcfs_2019['pc_income'], k=10)
 lcfs_2019['income_group'] = lcfs_2019['pc_income'].map(q).map(
     dict(zip([x for x in range(10)],
              ['Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest'])))
+lcfs_2019['pc_income'] = lcfs_2019['income anonymised'] / lcfs_2019['no people']
 
 lcfs_2019['age_group_hrp'] = '18 or younger'
 for i in [[18, 29], [30, 49], [50, 64], [65, 74]]:
@@ -47,7 +65,7 @@ groups = []
 for item in ['age_group_hrp', 'income_group', 'all']: #'hhd_type','gor modified', 
     # generate temp df
     temp = cp.copy(lcfs_2019)
-    vars_ghg = temp.loc[:, '1.1.1.1':'12.5.3.5'].columns.tolist()
+    vars_ghg = ['income anonymised'] + temp.loc[:, '1.1.1.1':'12.5.3.5'].columns.tolist()
     temp = temp[vars_ghg + ['weight', 'pop', item]].set_index(item).apply(lambda x: pd.to_numeric(x, errors='coerce')).reset_index()
     # calculate weighted means
     # household level
@@ -67,52 +85,14 @@ for item in groups:
     results_2020 = results_2020.join(multiplier[[item]], rsuffix='_m')
     results_2020[item] = results_2020[item] * results_2020[item + '_m']
     
-results_2020 = results_2020[groups]
+results_2020 = results_2020[groups].T
 
-income = pd.read_excel(wd + 'data/raw/LCFS/LCFS_aggregated_2020.xlsx', sheet_name='Income', header=[0], index_col=0).fillna(0).T
+# add demographic info
+temp = pd.read_excel(wd + 'data/raw/LCFS/LCFS_aggregated_2020.xlsx', sheet_name='pop', header=0, index_col=0).T
+results_2020 = results_2020.join(temp)
 
-results_2020 = results_2020.T.join(income)
 results_2020['pop'] = results_2020['weight'] * results_2020['no people']
 
-
-# load CPI corrector data
-# adjust to CPI
-ref_year = 2019 # choose year which to adjust expenditure to
-# import cpi cat lookup
-cpi_lookup = pd.read_excel(wd + 'data/processed/CPI_lookup.xlsx', sheet_name='Sheet4')
-cpi_lookup['ccp_lcfs'] = [x.split(' ')[0] for x in cpi_lookup['ccp_lcfs']]
-# import cpi data --> uses 2015 as base year, change to 2007
-cpi = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0)\
-    .loc[['2019', '2020']].T.dropna(how='all').astype(float)
-#check = cp.copy(cpi)
-cpi = cpi.apply(lambda x: x/cpi[str(ref_year)] * 100)
-cpi['Type'] = [x.split(' ')[0] + ' ' + x.split(' ')[1] for x in cpi.index.tolist()]
-cpi = cpi.loc[cpi['Type'].isin(['CPI INDEX']) == True]
-cpi['Reference_year'] = [x[-8:] for x in cpi.index.tolist()]
-cpi = cpi.loc[cpi['Reference_year'].str.contains('=100') == True]
-cpi['Product'] = [x.replace('CPI INDEX ', '').split(' ')[0] for x in cpi.index.tolist()]
-
-hhdspend_cpi = cp.copy(results_2020)
-
-cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP4_index']))
-
-# don't adjust income, as this is already in 2019 values
-
-for item in hhdspend_cpi.loc[:,'1.1.1.1':'12.5.3.5'].columns:
-    hhdspend_cpi[item] = hhdspend_cpi[item] * (100 / float(cpi.loc[cpi_dict[item], '2020'])) # check again that this is correct
-
-
-# make sure that groups add up to average
-var_list = hhdspend_cpi.loc[:,'1.1.1.1':'12.5.3.5'].columns.tolist() + ['income anonymised']
-temp = cp.copy(hhdspend_cpi.set_index('group_var', append=True))
-temp[var_list] = temp[var_list].apply(lambda x: x*temp['weight'])
-temp = temp.join(temp[var_list].sum(axis=0, level=1), rsuffix='_sum')
-for item in var_list:
-    temp.loc[temp[item + '_sum'] == 0, item + '_sum'] = 0.01
-    temp[item] = temp[item] / temp[item + '_sum'] * temp.loc[('all', 'All'), item + '_sum']
-temp = temp[var_list].apply(lambda x: x/temp['weight'])
-
-hhdspend_cpi = hhdspend_cpi.drop(var_list, axis=1).join(temp.droplevel(axis=0, level=1))
-
-hhdspend_cpi.to_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv')
+# save as is, all values already in 2019 values, because we only used 
+results_2020.to_csv(wd + 'data/raw/LCFS/LCFS_aggregated_2020_adjusted.csv')
 
