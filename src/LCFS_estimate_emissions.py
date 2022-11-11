@@ -29,7 +29,7 @@ ref_year = 2007 # choose year which expenditure is adjusted to (by CPI)
 hhd_type_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp3_lookup.xlsx', sheet_name='hhd_type')
 
 years = list(range(2001, 2021))
-pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
+pop = 'hhld_oecd_mod' #'no people' # change this to oecd equivalised scale if needed  #
 
 # load LFC data
 lcfs = {}
@@ -69,17 +69,17 @@ for year in list(lcfs.keys()):
         # OECD household equivalent scales
         # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
         temp = cp.copy(people[year])
-        temp['<16'] =  temp['people aged <18'] - temp['people aged 16-17']
-        temp['16+'] = temp['no people'] - temp['<16']
+        temp['18+'] = temp['no people'] - temp['people aged <18']
         temp['hhld_oecd_mod'] = 0
-        temp.loc[temp['16+'] > 0, 'hhld_oecd_mod'] = 1
+        temp.loc[temp['18+'] > 0, '18+'] = temp['18+'] - 1
+        temp.loc[temp['18+'] == 0, 'people aged <18'] = temp['people aged <18'] - 1
         temp['hhld_oecd_equ'] = temp['hhld_oecd_mod']
         # OECD-modified scale
-        temp['hhld_oecd_mod'] = temp['hhld_oecd_mod'] + ((temp['16+'] - 1) * 0.5) + (temp['<16'] * 0.3)
+        temp['hhld_oecd_mod'] = 1 + (temp['18+'] * 0.5) + (temp['people aged <18'] * 0.3)
         people[year] = people[year].join(temp[['hhld_oecd_mod']])
         # OECD equivalence scale
-        temp['hhld_oecd_equ'] = temp['hhld_oecd_equ'] + ((temp['16+'] - 1) * 0.7) + (temp['<16'] * 0.5)
-        people[year] = people[year].join(temp[['hhld_oecd_equ', '16+']])
+        temp['hhld_oecd_equ'] = 1 + (temp['18+'] * 0.7) + (temp['people aged <18'] * 0.5)
+        people[year] = people[year].join(temp[['hhld_oecd_equ']])
         
         #
         people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop]

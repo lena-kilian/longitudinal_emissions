@@ -35,7 +35,7 @@ vars_ghg = ['Food and Drinks', 'Other consumption', 'Recreation, culture, and cl
 
 vars_weighted_means = ['age hrp', 'income anonymised',  'age_adults_mean', 'age_minors_mean', 'age_all_mean']
 
-vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people aged <18', 'rooms in accommodation', 'hhld_oecd_equ', '16+']
+vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people aged <18', 'rooms in accommodation', 'hhld_oecd_equ', 'hhld_oecd_mod']
     
     
 # import data
@@ -192,7 +192,7 @@ for year in [2020, '2020_cpi']:
     hhd_ghg[year].loc[hhd_ghg[year]['group'] == 'all', 'group'] = 'all_households'
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     hhd_ghg[year]['group_var'] = hhd_ghg[year]['group_var'].map({'All':'all', 'Age of HRP':'age_group_hrp', 'Income decile':'income_group'})
-    hhd_ghg[year] = hhd_ghg[year].drop('no people', axis=1).merge(temp[['group', 'hhld_oecd_equ', '16+', 'no people']], on='group')
+    hhd_ghg[year] = hhd_ghg[year].drop('no people', axis=1).merge(temp[['group', 'hhld_oecd_equ', 'hhld_oecd_mod', 'no people']], on='group')
     
     hhd_ghg[year][vars_ghg] = hhd_ghg[year][vars_ghg].apply(lambda x: x/hhd_ghg[year]['no people'])
     
@@ -204,15 +204,21 @@ for year in [2020, '2020_cpi']:
 results[vars_ghg] = results[vars_ghg].apply(lambda x: x*results['no people'])
 
 results['pc'] = 'no people'
+# add old equ
 temp = cp.copy(results)
+temp2 = cp.copy(results)
 temp['no people'] = temp['hhld_oecd_equ']
 temp['pc'] = 'hhld_oecd_equ'
 results = results.append(temp)
+# add mod equ
+temp2['no people'] = temp2['hhld_oecd_mod']
+temp2['pc'] = 'hhld_oecd_mod'
+results = results.append(temp2)
 
 results['pc_income'] = results['income anonymised'] / results['no people'] 
 results[vars_ghg] = results[vars_ghg].apply(lambda x: x/results['no people'])
 
-results = results.drop('hhld_oecd_equ', axis=1)
+results = results.drop(['hhld_oecd_equ', 'hhld_oecd_mod'], axis=1)
 
 results['group'] = results['group'].str.replace('all_households', 'All households')
 

@@ -17,7 +17,7 @@ import pysal as ps
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
-pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
+pop = 'hhld_oecd_mod' #'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
 
 # Load LCFS data
 dvhh_file = wd + 'data/raw/LCFS/2019-2020/tab/2019-2020_dvhh_ukanon.tab'
@@ -31,17 +31,16 @@ lcfs_2019 = lcfs_2019.set_index('case')
 # OECD household equivalent scales
 # https://www.oecd.org/economy/growth/OECD-Note-EquivalenceScales.pdf
 temp = cp.copy(lcfs_2019)
-temp['<16'] =  temp['people aged <18'] - temp['people aged 16-17']
-temp['16+'] = temp['no people'] - temp['<16']
+temp['18+'] = temp['no people'] - temp['people aged <18']
 temp['hhld_oecd_mod'] = 0
-temp.loc[temp['16+'] > 0, 'hhld_oecd_mod'] = 1
+temp.loc[temp['18+'] > 0, '18+'] = temp['18+'] - 1
+temp.loc[temp['18+'] == 0, 'people aged <18'] = temp['people aged <18'] - 1
 temp['hhld_oecd_equ'] = temp['hhld_oecd_mod']
 # OECD-modified scale
-temp['hhld_oecd_mod'] = temp['hhld_oecd_mod'] + ((temp['16+'] - 1) * 0.5) + (temp['<16'] * 0.3)
-lcfs_2019 = lcfs_2019.join(temp[['hhld_oecd_mod']])
+temp['hhld_oecd_mod'] = 1 + (temp['18+'] * 0.5) + (temp['people aged <18'] * 0.3)
 # OECD equivalence scale
-temp['hhld_oecd_equ'] = temp['hhld_oecd_equ'] + ((temp['16+'] - 1) * 0.7) + (temp['<16'] * 0.5)
-lcfs_2019 = lcfs_2019.join(temp[['hhld_oecd_equ', '16+']])
+temp['hhld_oecd_equ'] = 1 + (temp['18+'] * 0.7) + (temp['people aged <18'] * 0.5)
+lcfs_2019 = lcfs_2019.join(temp[['hhld_oecd_equ', 'hhld_oecd_mod']])
 
 # edit variables where needed
 lcfs_2019['pop'] = lcfs_2019['weight'] * lcfs_2019['no people']      

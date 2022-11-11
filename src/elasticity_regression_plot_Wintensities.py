@@ -153,13 +153,14 @@ data_ghg['group'] = data_ghg['group'].str.replace('All households', 'all_househo
 data_int = intensities.set_index(['group', 'year', 'cpi', 'income_anonymised', 'age_hrp'])[vars_ghg]
 data_all = data_ghg.set_index(['group', 'year', 'cpi'])[vars_ghg].join(data_int, rsuffix='_exp', lsuffix='_ghg')
 for item in vars_ghg:
-    data_all[item] = data_all[item + '_ghg'] / data_all[item + '_exp']
+    data_all[item] = data_all[item + '_ghg'] / (data_all[item + '_exp'] * 52) *1000
     
 data_all = data_all[vars_ghg].stack().reset_index().rename(columns={'level_5':'product', 0:'intensities'})
 
 data = data_all.merge(results, on=['group', 'product', 'year', 'cpi'], how='outer').drop_duplicates()
 
 data.to_csv(wd + 'data/processed/GHG_Estimates_LCFS/Elasticity_regression_results_with_intensities.csv')
+
 """
 ### plot
 data_plot = data.loc[data['year'] == 'all']
@@ -181,5 +182,72 @@ for group in ['all', 'age_group_hrp', 'income_group']:
     sns.kdeplot(ax=ax, data=temp, x='elasticity', hue='group')
     plt.show()
 
-    
+for cpi in ['regular']:
+    data_plot = data.loc[(data['year'] != 'all') & (data['cpi'] == cpi)]
+    for group in ['all', 'age_group_hrp', 'income_group', 'intensities']:
+        fig, ax = plt.subplots(figsize=(9, 3))
+        if group != 'intensities':
+            temp = data_plot.loc[data_plot['group_var'] == group].sort_values(['product_cat', 'group_cat'])
+            temp['product_cat'] = temp['product_cat'].map(product_dict)
+            temp['group'] = temp['group'].replace('all_households', 'All households')
+            if group == 'all':
+                sns.boxplot(ax=ax, data=temp, y='elasticity', x='product_cat', hue='group', palette='colorblind', 
+                            linewidth=0.8, width=0.25)
+            else:
+                sns.boxplot(ax=ax, data=temp, y='elasticity', x='product_cat', hue='group', palette='colorblind', 
+                            linewidth=0.8)
+            plt.setp(ax.artists, edgecolor = 'k')
+            plt.axhline(0, linestyle='-', c='black', lw=0.5)
+            plt.axhline(1, linestyle='--', c='black', lw=0.5)
+            plt.ylabel('Elasticity')
+            plt.xlabel('')
+            plt.ylim(-0.5, 5)
+            #plt.xticks(rotation=90)
+        else:
+            temp2 = temp.groupby(['product_cat', 'year']).mean()[['intensities']].reset_index()
+            sns.boxplot(ax=ax, data=temp2, y='intensities', x='product_cat', linewidth=1, width=.25)
+            plt.setp(ax.artists, edgecolor = 'k', facecolor='w')
+            ax.set_ylabel('Intensity (kgCO$_{2}$e / GBP)')
+            plt.ylim(0, 37.5)
+        for i in range(7):
+            plt.axvline(i+0.5, linestyle=':', c='grey', lw=0.5)
+        # save figure
+        plt.legend(bbox_to_anchor=(1.5, 1)); 
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/elasticities_regression_boxplots_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=200)
+        plt.show()
+        
+for cpi in ['regular', 'cpi']:
+    data_plot = data.loc[(data['year'] != 'all') & (data['cpi'] == cpi)]
+    for group in ['all', 'age_group_hrp', 'income_group']:
+        temp = data_plot.loc[data_plot['group_var'] == group].sort_values(['product_cat', 'group_cat'])
+        temp['product_cat'] = temp['product_cat'].map(product_dict)
+        temp['group'] = temp['group'].replace('all_households', 'All households')
+        fig, ax = plt.subplots(figsize=(9, 3))
+        sns.boxplot(ax=ax, data=temp, y='elasticity', x='product_cat', hue='group', palette='colorblind', linewidth=0.8)
+        plt.legend(bbox_to_anchor=(1.5, 1)); 
+        plt.axhline(0, linestyle='-', c='black', lw=0.5)
+        plt.axhline(1, linestyle='--', c='black', lw=0.5)
+        for i in range(7):
+            plt.axvline(i+0.5, linestyle=':', c='grey', lw=0.5)
+        plt.ylabel('Elasticity')
+        plt.xlabel('')
+        plt.ylim(-0.5, 5)
+        #plt.xticks(rotation=90)
+        
+        if cpi == 'with_cpi':
+            temp2 = temp.loc[temp['year'] == '2007'].groupby('product_cat').mean()[['intensities']].reset_index()
+            temp2['CI'] = 'Carbon Intensity\n(mean value)'
+        else:
+            temp2 = temp.groupby('product_cat').mean()[['intensities']].reset_index()
+            #temp2 = temp.groupby(['product_cat', 'year']).mean()[['intensities']].reset_index()
+            temp2['CI'] = 'Carbon Intensity\n(mean value)'
+        ax2 = ax.twinx()
+        sns.scatterplot(ax=ax2, data=temp2, y='intensities', x='product_cat', hue='CI', palette=sns.color_palette(['red']))
+        ax2.set_ylabel('Intensity (kgCO$_{2}$e / GBP)')
+        plt.ylim(-2.2, 22)
+        plt.legend(bbox_to_anchor=(1.5, -0.5)); 
+        
+        # save figure
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/elasticities_regression_boxplots_' + group + '_' + cpi + '_w_intensities.png', bbox_inches='tight', dpi=200)
+        plt.show()
     
