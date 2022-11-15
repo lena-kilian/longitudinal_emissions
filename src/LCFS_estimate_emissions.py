@@ -43,6 +43,7 @@ for year in years:
     lcfs[str(year) + '_cpi'] = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '_wCPI_ref' + str(ref_year) + '.csv')\
         .set_index('case')[order]
 
+
 for year in list(lcfs.keys()):
     if year not in [2020, '2020_cpi']:
         # separate sociodemographic variables
@@ -119,7 +120,7 @@ for year in years:
     name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv'
     hhd_ghg[year].reset_index().to_csv(name)
     print(str(year) + ' saved')
-    
+
 # save emissions using ref_year multipliers
 multiplier_ref_year = multipliers[ref_year][['multipliers']]
 for year in [str(y) + '_cpi' for y in years]:
@@ -127,7 +128,7 @@ for year in [str(y) + '_cpi' for y in years]:
     temp = temp.apply(lambda x: x*temp['multipliers']).drop(['multipliers'], axis=1).T
     temp = people[year].join(temp)
     temp.loc[:,'1.1.1.1':'12.5.3.5'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/temp['weight'])
+    hhd_ghg[year] = cp.copy(temp)
     name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '.csv'
     temp.to_csv(name)
     print(year +  ' with 2007 multipliers saved')
-

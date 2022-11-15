@@ -170,7 +170,7 @@ results.loc[results['group_var'] == 'income_group', 'group'] = results.loc[resul
 
 region_dict = dict(zip(['Group ' + str(x) for x in range(1, 13)],
                        ['North East', 'North West and Merseyside', 'Yorkshire and the Humber', 'East Midlands'	,
-                       'West Midlands', 'Eastern', 'London', 'South East', 'South West', 'Wales', 'Scotland', 'Northern Ireland']))
+                        'West Midlands', 'Eastern', 'London', 'South East', 'South West', 'Wales', 'Scotland', 'Northern Ireland']))
 results.loc[results['group_var'] == 'gor modified', 'group'] = results.loc[results['group_var'] == 'gor modified', 'group'].map(region_dict)
 
 results['group'] = results['group'].str.replace('Group ', '')
@@ -183,19 +183,15 @@ for year in [2020, '2020_cpi']:
     hhd_ghg[year]['year'] = 2020
     if str(year)[-3:] == 'cpi':
         hhd_ghg[year]['cpi'] = 'with_cpi'
-        temp = results.loc[(results['year']==2019) & (results['cpi'] == 'with_cpi')]
     else:
         hhd_ghg[year]['cpi'] = 'regular'
-        temp = results.loc[(results['year']==2019) & (results['cpi'] == 'with_cpi')]
     hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
     hhd_ghg[year] = hhd_ghg[year].rename(columns={'case':'group'})
     hhd_ghg[year].loc[hhd_ghg[year]['group'] == 'all', 'group'] = 'all_households'
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     hhd_ghg[year]['group_var'] = hhd_ghg[year]['group_var'].map({'All':'all', 'Age of HRP':'age_group_hrp', 'Income decile':'income_group'})
-    hhd_ghg[year] = hhd_ghg[year].drop('no people', axis=1).merge(temp[['group', 'hhld_oecd_equ', 'hhld_oecd_mod', 'no people']], on='group')
     
     hhd_ghg[year][vars_ghg] = hhd_ghg[year][vars_ghg].apply(lambda x: x/hhd_ghg[year]['no people'])
-    
     
     idx = results.columns.tolist()
     results = results.append(hhd_ghg[year])[idx]
@@ -227,4 +223,3 @@ results.to_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_mean
 order = ['All households', 'Other', '18-29', '30-49', '50-64', '65-74', '75+', 'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']
 results['group_cat'] = results['group'].astype('category').cat.set_categories(order, ordered=True)
 results = results.sort_values(['year', 'pc', 'cpi', 'group_cat'])
-
