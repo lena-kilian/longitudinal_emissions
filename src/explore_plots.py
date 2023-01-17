@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import copy as cp
 import datetime
 
-axis = 'tCO$_{2}$e / capita'
+axis_og = 'tCO$_{2}$e / '
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
@@ -44,6 +44,10 @@ group_dict = {'hhd_type':'Household Composition', 'age_group_hrp':'Age of HRP', 
               'income_group':'Income Decile', 'all':'All'}
 
 for pc in ['no people', 'hhld_oecd_mod']:
+    if pc == 'no people':
+        axis = axis_og + 'capita'
+    else:
+        axis = axis_og + 'SPH'
     # import data
     data_ghg = pd.read_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weighted_means_and_counts.csv')
     data_ghg = data_ghg.loc[(data_ghg['group'] != '0') & (data_ghg['group'] != 'Other') & (data_ghg['pc'] == pc)]

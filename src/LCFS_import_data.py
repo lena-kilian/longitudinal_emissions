@@ -59,6 +59,31 @@ lcfs[2020].columns = [str(x) for x in lcfs[2020].columns]
 
 years.append(2020)
 
+
+# load CPI corrector data
+# adjust to CPI
+ref_year = 2007 # choose year which to adjust expenditure to
+# import cpi cat lookup
+cpi_lookup = pd.read_excel(wd + 'data/processed/CPI_lookup.xlsx', sheet_name='Sheet4')
+cpi_lookup['ccp_lcfs'] = [x.split(' ')[0] for x in cpi_lookup['ccp_lcfs']]
+# import cpi data --> uses 2015 as base year, change to 2007
+cpi = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0)\
+    .loc[[str(x) for x in years]].T.dropna(how='all').astype(float)
+#check = cp.copy(cpi)
+cpi = cpi.apply(lambda x: x/cpi[str(ref_year)] * 100)
+cpi['Type'] = [x.split(' ')[0] + ' ' + x.split(' ')[1] for x in cpi.index.tolist()]
+cpi = cpi.loc[cpi['Type'].isin(['CPI INDEX']) == True]
+cpi['Reference_year'] = [x[-8:] for x in cpi.index.tolist()]
+cpi = cpi.loc[cpi['Reference_year'].str.contains('=100') == True]
+cpi['Product'] = [x.replace('CPI INDEX ', '').split(' ')[0] for x in cpi.index.tolist()]
+
+# extract inflation data
+# import cpi data --> uses 2015 as base year, change to 2007
+inflation = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0).loc[[str(x) for x in years], 'CPI INDEX 00: ALL ITEMS 2015=100']\
+        .T.dropna(how='all').astype(float)
+# extract 2020 relative to 2019, to adjust non-cpi data to 2020 income, not keep it as 2019
+inflation_2020 = inflation['2020']/inflation['2019']
+
 ###########
 # Regular #
 ###########
@@ -112,6 +137,8 @@ for year in years:
                                  1.505082547, 1.518505583, 1.499190431, 1.437895926, 1.478035987, 1.544683153, 1.477080103, 1.521605193, 1.516818963, 1.328096309]
         
         hhdspend[year] = temp.join(hhdspend[year][order].drop(['weight', 'no people'], axis=1))
+        
+        hhdspend[year]['income anonymised'] = hhdspend[year]['income anonymised'] * inflation_2020
             
     hhdspend[year].index.name = 'case'
     hhdspend[year] = hhdspend[year].reset_index()
@@ -124,28 +151,6 @@ for year in years:
 # Adjusted to CPI #
 ###################
 # Adjust everything to 2007 prices, to be used with 2007 multipliers 
-
-# load CPI corrector data
-# adjust to CPI
-ref_year = 2007 # choose year which to adjust expenditure to
-# import cpi cat lookup
-cpi_lookup = pd.read_excel(wd + 'data/processed/CPI_lookup.xlsx', sheet_name='Sheet4')
-cpi_lookup['ccp_lcfs'] = [x.split(' ')[0] for x in cpi_lookup['ccp_lcfs']]
-# import cpi data --> uses 2015 as base year, change to 2007
-cpi = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0)\
-    .loc[[str(x) for x in years]].T.dropna(how='all').astype(float)
-#check = cp.copy(cpi)
-cpi = cpi.apply(lambda x: x/cpi[str(ref_year)] * 100)
-cpi['Type'] = [x.split(' ')[0] + ' ' + x.split(' ')[1] for x in cpi.index.tolist()]
-cpi = cpi.loc[cpi['Type'].isin(['CPI INDEX']) == True]
-cpi['Reference_year'] = [x[-8:] for x in cpi.index.tolist()]
-cpi = cpi.loc[cpi['Reference_year'].str.contains('=100') == True]
-cpi['Product'] = [x.replace('CPI INDEX ', '').split(' ')[0] for x in cpi.index.tolist()]
-
-# extract inflation data
-# import cpi data --> uses 2015 as base year, change to 2007
-inflation = pd.read_csv(wd + 'data/raw/CPI_longitudinal.csv', index_col=0).loc[[str(x) for x in years], 'CPI INDEX 00: ALL ITEMS 2015=100']\
-        .T.dropna(how='all').astype(float)
 inflation = inflation.apply(lambda x: x/inflation[str(ref_year)])
 
 # import gas and electricity data to adjust to this - use physical unit
@@ -173,9 +178,9 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
     
     order = hhdspend_cpi[year].columns.tolist()
     # adjust income
+    
+    hhdspend_cpi[year]['income anonymised'] = hhdspend_cpi[year]['income anonymised'] / inflation[str(year)]
     if year != 2020:
-        hhdspend_cpi[year]['income anonymised'] = hhdspend_cpi[year]['income anonymised'] / inflation[str(year)]
-   
         # adjust expenditure by CPI - do thise before adjusting for physical data for flights and rent
         if ref_year <= 2014 or year <= 2014: # befroe 2015 we only have index level 3
             cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP3_index']))
@@ -229,8 +234,6 @@ for year in [ref_year] + cpi_years: # need to run ref_year first, to have the da
         hhdspend_cpi[year] = hhdspend_cpi[year].drop(['7.3.4.1', '7.3.4.2'], axis=1).join(flights_yr[['7.3.4.1', '7.3.4.2']])
     
     else:
-        hhdspend_cpi[year]['income anonymised'] = hhdspend_cpi[year]['income anonymised'] / inflation['2019'] # use 2019, as 2020 data is already adjusted to 2019 prices
-    
         if ref_year <= 2014 or year <= 2014: # befroe 2015 we only have index level 3
             cpi_dict = dict(zip(cpi_lookup['ccp_lcfs'], cpi_lookup['CPI_CCP3_index']))
         else:

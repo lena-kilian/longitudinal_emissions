@@ -8,7 +8,6 @@ Created on Mon Nov 21 2022
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import copy as cp
 import geopandas as gpd
 import numpy as np
 

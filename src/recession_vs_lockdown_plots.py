@@ -15,11 +15,9 @@ Before this run:
 """
 
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
-import copy as cp
 
-axis = 'tCO$_{2}$e / capita'
+axis = 'tCO$_{2}$e/SPH'
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
