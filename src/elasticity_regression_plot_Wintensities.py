@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import pysal as ps
+import matplotlib
 
 
 wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
@@ -50,6 +51,9 @@ results['product_cat'] = results['product'].astype('category').cat.reorder_categ
 	['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 
     'Private and public road transport', 'Air transport', 'Recreation, culture, and clothing', 
     'Other consumption', 'Total'])
+
+anova = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Elasticity_regression_anova.csv')  
+
 
 # make plot for all years with error bars
 results['ci_low'] = results['elasticity'] - results['ci_low']
@@ -201,7 +205,7 @@ for cpi in ['regular']:
             plt.axhline(1, linestyle='--', c='black', lw=0.5)
             plt.ylabel('Elasticity')
             plt.xlabel('')
-            plt.ylim(-0.5, 5)
+            plt.ylim(-0.5, 5.5)
             #plt.xticks(rotation=90)
         else:
             temp2 = temp.groupby(['product_cat', 'year']).mean()[['intensities']].reset_index()
@@ -211,6 +215,16 @@ for cpi in ['regular']:
             plt.ylim(0, 37.5)
         for i in range(7):
             plt.axvline(i+0.5, linestyle=':', c='grey', lw=0.5)
+            
+        if group in ['age_group_hrp', 'income_group']:
+            anova_temp = anova.loc[anova['group_var'] == group].set_index('product')
+            prods = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 
+                     'Private and public road transport', 'Air transport', 'Recreation, culture, and clothing', 
+                     'Other consumption', 'Total']          
+            for i in range(len(prods)):
+                text = anova_temp.loc[prods[i], 'sig']
+                plt.text(i-0.25, 5.1, text)
+            
         # save figure
         plt.legend(bbox_to_anchor=(1.5, 1)); 
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/elasticities_regression_boxplots_' + group + '_' + cpi + '.png', bbox_inches='tight', dpi=200)
