@@ -115,7 +115,7 @@ for pc in ['no people', 'hhld_oecd_mod']:
         ax2 = ax.twinx()
         sns.lineplot(ax=ax2, data=temp, x='year', y='ghg', hue='Product Category', style='Product Category', 
                      dashes=style, palette=sns.color_palette(['k']))
-        ax2.set_ylabel('GBP / capita')
+        ax2.set_ylabel('GBP / SPH')
         ax2.legend(bbox_to_anchor=(1.6, 0.25))
         if pc =='no people':
             ax.set_ylim(0, 5.5)
@@ -180,7 +180,7 @@ for pc in ['no people', 'hhld_oecd_mod']:
                 ax2 = ax1.twinx()
                 ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
                 ax2.scatter(income.index, income['pc_income'], color='k')
-                ax2.set_ylabel('Income per capita (weekly)')
+                ax2.set_ylabel('Income per SPH (weekly)')
                 ax2.set_ylim(0, inc_max[cpi])
                 #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
                 # modify plot
@@ -217,7 +217,7 @@ for pc in ['no people', 'hhld_oecd_mod']:
             # axis right
             ax2 = ax1.twinx()
             ax2.scatter(temp['group_cat'], temp['pc_income'], color='k')
-            ax2.set_ylabel('Income per capita (weekly)')
+            ax2.set_ylabel('Income per SPH (weekly)')
             ax2.set_ylim(0, inc_max[cpi])
             #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
             # modify plot
@@ -253,7 +253,7 @@ for pc in ['no people', 'hhld_oecd_mod']:
                 # axis right
                 ax2 = ax1.twinx()
                 ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
-                ax2.set_ylabel('Income per capita (weekly)')
+                ax2.set_ylabel('Income per SPH (weekly)')
                 ax2.set_ylim(0, inc_max[cpi])
                 #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
                 # modify plot
@@ -272,7 +272,7 @@ for pc in ['no people', 'hhld_oecd_mod']:
         # axis right
         ax2 = ax1.twinx()
         ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
-        ax2.set_ylabel('Income per capita (weekly)')
+        ax2.set_ylabel('Income per SPH (weekly)')
         ax2.set_ylim(0, inc_max[cpi])
         ax2.legend(['Income'], bbox_to_anchor=(4, 0.5))
         # modify plot
