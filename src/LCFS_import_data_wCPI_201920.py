@@ -20,11 +20,17 @@ import pandas as pd
 import LCFS_import_data_function as lcfs_import
 import copy as cp
 import pickle
+from sys import platform
 
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
-years = [2019, 2020]
-lcf_years = dict(zip(years, ['2019-2020', '2009']))
+years = [2019, 2021]
+lcf_years = dict(zip(years, ['2019-2020', '2020-2021']))
 
 def isNaN(string):
     return string != string

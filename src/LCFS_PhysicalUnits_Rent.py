@@ -9,18 +9,28 @@ This file controls for physical use of flights, dwellings, and electricity in th
 """
 
 import pandas as pd
+from sys import platform
 
-# Dwellings (rent)
-lcf_filepath = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/raw/LCFS/'
-       
-years = list(range(2001, 2020))
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
+
+# Dwellings
+
+lcf_filepath = wd + 'data/raw/LCFS/'
+
+years = list(range(2001, 2021))
 lcf_years = ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
-             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020']
+             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020',
+             '2020-2021']
 
 
 
 
-dvhh = {}; rent = {}; writer = pd.ExcelWriter(r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/processed/LCFS/Controls/rent_2001-2018.xlsx')
+dvhh = {}; rent = {}; writer = pd.ExcelWriter(wd + 'data/processed/LCFS/Controls/rent_2001-2020.xlsx')
 for year in lcf_years:
     dvhh_file = lcf_filepath + year + '/tab/' + year + '_dvhh_ukanon.tab'
     first_year = eval(year[:4])

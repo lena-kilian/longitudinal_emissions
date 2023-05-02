@@ -9,18 +9,27 @@ This file creates controls for physical use of flights in the LCFS
 """
 
 import pandas as pd
+from sys import platform
 
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
 # Flights
-lcf_filepath = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/raw/LCFS/'
 
-years = list(range(2001, 2020))
+lcf_filepath = wd + 'data/raw/LCFS/'
+
+years = list(range(2001, 2021))
 lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005', '2005-2006', '2006', '2007', '2008', '2009', 
-                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020']))
+                             '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020',
+                             '2020-2021']))
 
 
 
-flight_lookup = pd.read_excel(r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/processed/LCFS/Controls/Physical Unit Coding.xlsx', sheet_name='Flights')
+flight_lookup = pd.read_excel(wd + 'data/processed/LCFS/Controls/Physical Unit Coding.xlsx', sheet_name='Flights')
 flight_lookup = flight_lookup.loc[flight_lookup['Variable'] == 'flydest']
 flight_lookup['Year'] = flight_lookup['LCF_Year'].astype(str).str[:4].astype(int)
 
@@ -67,12 +76,12 @@ for year in years:
     flight_data[year]['7.3.4.1_proxy'] = (flight_data[year]['Domestic'] / flight_data[year]['Domestic'].sum()) * flight_data[year]['7.3.4.1'].sum()
     flight_data[year]['7.3.4.2_proxy'] = (flight_data[year]['International'] / flight_data[year]['International'].sum()) * flight_data[year]['7.3.4.2'].sum()
 
-    flight_data[year].loc[:, '7.3.4.1':] = flight_data[year].loc[:, '7.3.4.1':].apply(lambda x: x/flight_data[year]['weight'])  
+    flight_data[year].loc[:, '7.3.4.1':] = flight_data[year].loc[:, '7.3.4.1':].apply(lambda x: x/flight_data[year]['weight'])
     
-    flight_data[year] = flight_data[year].drop('weight', axis=1)
+    flight_data[year] = flight_data[year][['7.3.4.1_proxy', '7.3.4.2_proxy', 'International', 'Domestic']]
 
 # save to file
-writer = pd.ExcelWriter(r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/data/processed/LCFS/Controls/flights_2001-2018.xlsx')
+writer = pd.ExcelWriter(wd + 'data/processed/LCFS/Controls/flights_2001-2020.xlsx')
 for year in years:
     flight_data[year].to_excel(writer, sheet_name=str(year))
 writer.save()
