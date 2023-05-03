@@ -17,9 +17,14 @@ Next run: eplore_plots.py
 
 import pandas as pd
 import copy as cp
+from sys import platform
 
-
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
 ref_year = 2007 # choose year which expenditure is adjusted to (by CPI)
 

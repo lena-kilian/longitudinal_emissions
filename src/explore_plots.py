@@ -19,10 +19,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import copy as cp
 import datetime
+from sys import platform
+
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
 axis_og = 'tCO$_{2}$e / '
 
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
 plt.rcParams.update({'font.family':'Times New Roman', 'font.size':11})
 
@@ -111,10 +118,10 @@ for pc in ['no people', 'hhld_oecd_mod']:
         
         temp = data_plot.loc[(data_plot['cpi'] == cpi) & (data_plot['Product Category'] == 'pc_income')]
         temp['Product Category'] = 'Weekly income'
-        style = {key:value for key,value in zip(temp['Product Category'].unique(), sns._core.unique_dashes(temp['Product Category'].unique().size+1)[1:])}
+        #style = {key:value for key,value in zip(temp['Product Category'].unique(), sns._core.unique_dashes(temp['Product Category'].unique().size+1)[1:])}
         ax2 = ax.twinx()
-        sns.lineplot(ax=ax2, data=temp, x='year', y='ghg', hue='Product Category', style='Product Category', 
-                     dashes=style, palette=sns.color_palette(['k']))
+        sns.lineplot(ax=ax2, data=temp, x='year', y='ghg', hue='Product Category', style='Product Category', # dashes=style, 
+                     palette=sns.color_palette(['k']))
         ax2.set_ylabel('GBP / SPH')
         ax2.legend(bbox_to_anchor=(1.6, 0.25))
         if pc =='no people':

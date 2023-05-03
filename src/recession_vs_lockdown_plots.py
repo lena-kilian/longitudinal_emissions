@@ -16,12 +16,20 @@ Before this run:
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sys import platform
+import matplotlib.patches as mpatches
 
-axis = 'tCO$_{2}$e/SPH'
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
+axis = 'tCO$_{2}$e'
 
-plt.rcParams.update({'font.family':'Times New Roman', 'font.size':11})
+plt.rcParams.update({'font.family':'Times New Roman', 'font.size':12})
 
 vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 
             'Private and public road transport', 'Air transport', 
@@ -65,3 +73,73 @@ data_comp = data_comp.sort_values('group_cat')
 check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_4', 'type', 'group_cat', 'pc']).unstack(level='level_4').stack(level=0)[
     ['pc_income', 'Total', 'Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 'Private and public road transport', 
      'Air transport', 'Recreation, culture, and clothing', 'Other consumption']].reset_index().sort_values(['year_type', 'pc', 'cpi', 'type', 'group_cat'])
+
+
+##########
+## PLOT ##
+##########
+
+prods = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 'Private and public road transport', 
+         'Air transport', 'Recreation, culture, and clothing', 'Other consumption']
+
+
+supergroups = ['All', 'Age', 'Income']
+supergroups_dicts = {'All':['All households'], 'Age':['18-29', '30-49', '50-64', '65-74', '75+'], 'Income':['Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']}
+
+results_filtered = check.loc[(check['cpi'] == 'with_cpi') & (check['pc'] == 'hhld_oecd_mod') & (check['year_type'] != 'Percentage difference') & (check['year_type'] != 'Difference')]
+
+color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
+
+max_co2 = results_filtered['Total'].max() * 1.05
+max_inc = results_filtered['pc_income'].max() * 1.05
+
+for years in ['2007-2009', '2019-2020']:
+    temp = results_filtered.loc[results_filtered['type'] == years]
+    temp['Year'] = temp['year_type'].map({'First year':years[:4], 'Last year':years[-4:]})
+    
+    for item in supergroups:
+        groups = supergroups_dicts[item]
+        
+        fig, ax = plt.subplots(ncols=len(groups), figsize=(1.1*len(groups), 5), sharey=True)
+            
+        for i in range(len(groups)):
+            group = groups[i]
+            temp2 = temp.loc[temp['group_cat'] == group]
+            temp2 = temp2.set_index('Year')[prods + ['pc_income']]
+            
+            # axis left
+            if item == 'All':
+                ax1 = ax
+            else:
+                ax1 = ax[i]                
+            start = [0, 0]
+            patch_list = []
+            for j in range(len(prods)):
+                prod = prods[j]
+                height = temp2[prod]
+                ax1.bar(bottom=start, height=height, x=temp2.index, edgecolor='k', linewidth=0.5, color=color_list[j])
+                start += height
+                patch_list.append(mpatches.Patch(color=color_list[j], label=prod))
+            ax1.set_xlabel(group)
+            ax1.set_ylim(0, max_co2)
+            if i == 0:
+                ax1.set_ylabel(axis)
+            if item == 'All':
+                patch_list.reverse()
+                plt.legend(handles=patch_list, bbox_to_anchor=(-1, 1))
+
+            # axis right
+            ax2 = ax1.twinx()
+            ax2.scatter(temp2.index, temp2['pc_income'], color='k')
+            ax2.set_ylim(0, max_inc)
+            if i != len(groups)-1:
+                ax2.set(yticklabels=[])
+            else:
+                ax2.set_ylabel('Income (weekly)')
+            if item == 'All':
+                plt.legend(['Income'], bbox_to_anchor=(-1, 0))
+            # modify plot
+
+        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_compare_' + years + '_' + item + '.png',
+                    bbox_inches='tight', dpi=300)
+        plt.show() 
