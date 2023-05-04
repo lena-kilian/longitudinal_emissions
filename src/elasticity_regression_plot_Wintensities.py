@@ -16,9 +16,15 @@ import numpy as np
 import pickle
 import pysal as ps
 import matplotlib
+from sys import platform
 
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
 
 years = list(range(2001, 2020))

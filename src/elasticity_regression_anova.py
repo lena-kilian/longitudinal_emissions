@@ -12,8 +12,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.stats.anova import AnovaRM
 import scipy.stats as stats
+from sys import platform
 
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
+
 pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
 
 years = list(range(2001, 2020))

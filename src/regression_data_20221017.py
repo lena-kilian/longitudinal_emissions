@@ -15,9 +15,14 @@ Before this run:
 Next run: elasticities_regression.R
 """
 import pandas as pd
+from sys import platform
 
-
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
 ref_year = 2007 # choose year which expenditure is adjusted to (by CPI)
 

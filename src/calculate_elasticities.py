@@ -15,7 +15,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import LCFS_import_data_function as lcfs_import
 import pysal as ps
+from sys import platform
 
+# set working directory
+# make different path depending on operating system
+if platform[:3] == 'win':
+    wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
+else:
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
 
 pop = 'hhld_oecd_equ'
 
@@ -24,7 +31,6 @@ if pop == 'no people':
 else:
     axis = 'tCO$_{2}$e / adult'
 
-wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
 cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
 cat_lookup['ccp_code'] = [x.split(' ')[0] for x in cat_lookup['ccp']]
