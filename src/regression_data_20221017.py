@@ -44,7 +44,7 @@ vars_hhd_level = ['no people', 'no_adults', 'no_females', 'no_males', 'people ag
 # import data
 hhd_ghg = pd.DataFrame(columns=['year'])
 temp = {}
-for year in list(range(2001, 2020)):
+for year in list(range(2001, 2021)):
     temp[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')
     temp[str(year) + '_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '_cpi.csv')
 
