@@ -12,10 +12,7 @@ import pandas as pd
 import copy as cp
 import seaborn as sns
 import matplotlib.pyplot as plt
-import numpy as np
-import pickle
-import pysal as ps
-import matplotlib
+import mapclassify as ps
 from sys import platform
 
 # set working directory
@@ -27,7 +24,7 @@ else:
 
 pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
 
-years = list(range(2001, 2020))
+years = list(range(2001, 2021))
 
 vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 'Private and public road transport', 'Air transport', 
             'Recreation, culture, and clothing', 'Other consumption', 'Total']
@@ -113,6 +110,7 @@ for year in list(lcfs_og.keys()):
     lcfs_temp['pc_income'] = lcfs_temp['income anonymised'] / lcfs_temp[pop]
     q = ps.Quantiles(lcfs_temp['pc_income'], k=10)
     lcfs_temp['income_group'] = lcfs_temp['pc_income'].map(q)
+    lcfs_temp['income_group'] = [x[0] for x in lcfs_temp['income_group']]
     
     lcfs_temp['All households'] = 'all_households'
     

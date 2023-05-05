@@ -23,7 +23,7 @@ else:
 
 pop = 'hhld_oecd_equ' #'no people' # change this to oecd equivalised scale if needed  #
 
-years = list(range(2001, 2020))
+years = list(range(2001, 2021))
 
 vars_ghg = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 'Private and public road transport', 'Air transport', 
             'Recreation, culture, and clothing', 'Other consumption', 'Total']
