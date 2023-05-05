@@ -226,7 +226,7 @@ def make_footprint(hhdspend, wd):
 #############
 
     # load meta data from [UKMRIO]
-    meta = pickle.load(open(wd + 'data/raw/UKMRIO_2022/meta.p', "rb" ))
+    meta = pickle.load(open(wd + 'data/raw/UKMRIO_2022_2/meta.p', "rb" ))
    
     # create year lists
     years = list(hhdspend.keys())
@@ -244,8 +244,8 @@ def make_footprint(hhdspend, wd):
     
     # Load UKMRIO and calculate means for UKMRIO data
     ukmrio = {}; #means = {}
-    for data in ['ghg', 'uk_ghg_direct', 'S', 'U', 'Y']:
-        ukmrio[data] = pickle.load(open(wd + 'data/raw/UKMRIO_2022/' + data + '.p', "rb" ))
+    for data in ['ghg', 'uk_ghg_direct', 'U', 'S', 'Y']:
+        ukmrio[data] = pickle.load(open(wd + 'data/raw/UKMRIO_2022_2/' + data + '.p', "rb" ))
         
     ukmrio['Y'] = convert36to33(ukmrio['Y'], concs_dict2, years)
     total_Yhh_112 = make_Yhh_112(ukmrio['Y'], years, meta)

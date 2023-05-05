@@ -16,7 +16,6 @@ Before this run:
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sys import platform
 import matplotlib.patches as mpatches
 

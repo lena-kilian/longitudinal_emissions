@@ -13,13 +13,12 @@ Before this run:
     
 Next run: 
     - emissions_summary.py
-    - regression
 """
 
 import pandas as pd
 import estimate_emissions_main_function_2021 as estimate_emissions
 import copy as cp
-import pysal as ps
+import mapclassify as ps
 import pickle
 from sys import platform
 
@@ -55,22 +54,11 @@ for year in years:
     lcfs[str(year) + '_cpi'] = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_' + str(year) + '_wCPI_ref' + str(ref_year) + '.csv')\
         .set_index('case')[order]
 
+lcfs['2020_2019cpi'] = pd.read_csv(wd + 'data/processed/LCFS/Adjusted_Expenditure/LCFS_adjusted_2020_wCPI_ref2019.csv').set_index('case')[order]
 
 for year in list(lcfs.keys()):
     # separate sociodemographic variables
     people[year] = lcfs[year].loc[:,:'1.1.1.1'].iloc[:,:-1]
-    
-    # Classify household types
-    relatives = ['child (adult)', 'child (minor)', 'grandchild (minor)', 'grandchild (adult)', 
-                 'non-relative (minor)', 'non-relative (adult)', 'other relative (minor)', 'other relative (adult)', 'partner', 'sibling', 
-                 'son/daughter-in-law', 'father/mother-in-law', 'people aged <18']
-    temp = cp.copy(people[year][['parent/guardian'] + relatives])
-    for item in relatives:
-        temp.loc[temp[item] > 0, item] = True
-        temp.loc[temp[item] == 0, item] = False
-    temp = temp.merge(hhd_type_lookup, on=['parent/guardian'] + relatives)[['hhd_type']]
-    
-    people[year] = people[year].join(temp)
     
     # classify age range of hrp
     people[year]['age_group_hrp'] = 'Other'
@@ -97,13 +85,15 @@ for year in list(lcfs.keys()):
     people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop]
     q = ps.Quantiles(people[year]['pc_income'], k=10)
     people[year]['income_group'] = people[year]['pc_income'].map(q)
+    people[year]['income_group'] = [x[0] for x in people[year]['income_group']]
+    
     people[year]['pc_income'] = people[year]['income anonymised'] / people[year]['no people']
         
     # gather spend      
     lcfs[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].astype(float).apply(lambda x: x*lcfs[year]['weight'])
 
 # generate hhd emissions and multipliers only for regular years
-hhd_ghg, multipliers = estimate_emissions.make_footprint({y:lcfs[y] for y in years[:-1]}, wd)
+hhd_ghg, multipliers = estimate_emissions.make_footprint({y:lcfs[y] for y in years}, wd)
 
 
 ##########
@@ -132,3 +122,19 @@ for year in [str(y) + '_cpi' for y in years]:
     name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '.csv'
     temp.to_csv(name)
     print(year +  ' with 2007 multipliers saved')
+    
+# save emissions for 2020 using 2019 multipliers
+
+
+
+ref_year = 2019
+multiplier_ref_year = multipliers[ref_year][['multipliers']]
+
+temp = lcfs['2020_2019cpi'].T.join(multiplier_ref_year)
+temp = temp.apply(lambda x: x*temp['multipliers']).drop(['multipliers'], axis=1).T
+temp = people[2020].join(temp)
+temp.loc[:,'1.1.1.1':'12.5.3.5'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/temp['weight'])
+hhd_ghg['2020_2019cpi'] = cp.copy(temp)
+name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_2020.csv'
+temp.to_csv(name)
+print(year +  ' with 2019 multipliers saved')
