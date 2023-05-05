@@ -4,8 +4,8 @@ rm(list=ls())
 
 library(tidyverse)
 
-
-setwd("~/Documents/Ausbildung/UoLeeds/PhD/Analysis/")
+wd <- rstudioapi::getSourceEditorContext()$path
+setwd(paste(strsplit(wd,'Analysis')[[1]][1], 'Analysis/', sep=''))
 
 all_data <- read_csv('data/processed/GHG_Estimates_LCFS/Regression_data.csv')
 
