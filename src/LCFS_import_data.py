@@ -114,6 +114,7 @@ for year in years:
     
     print('Year ' + str(year) + ' completed')
 
+
 ###################
 # Adjusted to CPI #
 ###################
