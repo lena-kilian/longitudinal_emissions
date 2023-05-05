@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jan 18 2021
-
 CO2 emissions for MSOAs or LSOAs combining 2 years at a time, IO part adapted from code by Anne Owen
-
 @author: lenakilian
 """
 
@@ -252,19 +250,14 @@ def make_footprint(hhdspend, wd):
     ukmrio['Y'] = convert36to33(ukmrio['Y'], concs_dict2, years)
     total_Yhh_112 = make_Yhh_112(ukmrio['Y'], years, meta)
     
-    coicop_exp_tot = expected_totals(hhdspend, years, concs_dict2, total_Yhh_112)
-    for year in years:
-        for i in range(len(coicop_exp_tot[year])):
-            item = coicop_exp_tot[year][i]
-            if np.isnan(item) == True:
-                coicop_exp_tot[year][i] = 0
+    coicop_exp_tot = expected_totals(hhdspend, list(hhdspend.keys()), concs_dict2, total_Yhh_112)
 
-    yhh_wide = make_y_hh_307(ukmrio['Y'], coicop_exp_tot, years, concs_dict2, meta)
-    newY = make_new_Y(ukmrio['Y'], yhh_wide, meta, years)
+    yhh_wide = make_y_hh_307(ukmrio['Y'], coicop_exp_tot, list(hhdspend.keys()), concs_dict2, meta)
+    newY = make_new_Y(ukmrio['Y'], yhh_wide, meta, list(hhdspend.keys()))
 
-    ylcf_props = make_ylcf_props(hhdspend, years)
+    ylcf_props = make_ylcf_props(hhdspend, list(hhdspend.keys()))
 
-    COICOP_ghg = makefoot(ukmrio['S'], ukmrio['U'], newY, ukmrio['ghg'], years)
+    COICOP_ghg = makefoot(ukmrio['S'], ukmrio['U'], newY, ukmrio['ghg'], list(hhdspend.keys()))
 
     Total_ghg = {}; multipliers = {}
     for year in list(hhdspend.keys()):
