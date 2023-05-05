@@ -49,12 +49,19 @@ data_ghg = pd.read_csv(wd + 'Longitudinal_Emissions/outputs/Summary_Tables/weigh
 data_ghg = data_ghg.loc[(data_ghg['group'] != '0') & (data_ghg['group'] != 'Other')]
 data_ghg['group'] = data_ghg['group'].str.replace('all_households', 'All households')
 
-data_comp = data_ghg.loc[data_ghg['year'].isin(['2007', '2009', '2019', '2020']) == True]
+data_comp = data_ghg.loc[(data_ghg['year'].isin(['2007', '2009', '2019', '2020']) == True) & (data_ghg['pc'] == 'hhld_oecd_mod')]
 data_comp['type'] = data_comp['year'].map({'2007':'2007-2009', '2009':'2007-2009', '2019':'2019-2020', '2020':'2019-2020'})
 data_comp['year_type'] = data_comp['year'].map({'2007':'First year', '2009':'Last year', '2019':'First year', '2020':'Last year'})
-#data_comp['index'] = list(range(len(data_comp)))
 
-data_comp = data_comp.set_index(['type', 'year_type', 'cpi', 'group', 'group_var', 'pc'])[vars_ghg + ['pc_income']].unstack(level=['type', 'year_type'])\
+data_comp['keep'] = False
+data_comp.loc[(data_comp['year'] == '2007') & (data_comp['cpi'] == 'regular'), 'keep'] = True
+data_comp.loc[(data_comp['year'] == '2009') & (data_comp['cpi'] == 'with_cpi'), 'keep'] = True
+data_comp.loc[(data_comp['year'] == '2019') & (data_comp['cpi'] == 'regular'), 'keep'] = True
+data_comp.loc[(data_comp['year'] == '2020') & (data_comp['cpi'] == 'with_cpi19'), 'keep'] = True
+
+data_comp = data_comp.loc[data_comp['keep'] == True].drop(['keep', 'cpi', 'pc'], axis=1)
+
+data_comp = data_comp.set_index(['type', 'year_type', 'group', 'group_var'])[vars_ghg + ['pc_income']].unstack(level=['type', 'year_type'])\
     .swaplevel(axis=1).swaplevel(axis=1, i=0, j=1).swaplevel(axis=1, i=2, j=1)
 
 for event in ['2007-2009', '2019-2020']:
@@ -69,9 +76,9 @@ data_comp['group_cat'] = data_comp['group'].astype('category').cat.set_categorie
 
 data_comp = data_comp.sort_values('group_cat')
 
-check = data_comp.set_index(['cpi', 'group', 'group_var', 'level_4', 'type', 'group_cat', 'pc']).unstack(level='level_4').stack(level=0)[
+check = data_comp.set_index(['group', 'group_var', 'level_2', 'type', 'group_cat']).unstack(level='level_2').stack(level=0)[
     ['pc_income', 'Total', 'Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 'Private and public road transport', 
-     'Air transport', 'Recreation, culture, and clothing', 'Other consumption']].reset_index().sort_values(['year_type', 'pc', 'cpi', 'type', 'group_cat'])
+     'Air transport', 'Recreation, culture, and clothing', 'Other consumption']].reset_index().sort_values(['year_type', 'type', 'group_cat'])
 
 
 ##########
@@ -85,7 +92,7 @@ prods = ['Food and Drinks', 'Housing, water and waste', 'Electricity, gas, liqui
 supergroups = ['All', 'Age', 'Income']
 supergroups_dicts = {'All':['All households'], 'Age':['18-29', '30-49', '50-64', '65-74', '75+'], 'Income':['Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']}
 
-results_filtered = check.loc[(check['cpi'] == 'with_cpi') & (check['pc'] == 'hhld_oecd_mod') & (check['year_type'] != 'Percentage difference') & (check['year_type'] != 'Difference')]
+results_filtered = check.loc[(check['year_type'] != 'Percentage difference') & (check['year_type'] != 'Difference')]
 
 color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
 

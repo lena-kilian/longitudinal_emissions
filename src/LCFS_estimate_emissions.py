@@ -135,6 +135,6 @@ temp = temp.apply(lambda x: x*temp['multipliers']).drop(['multipliers'], axis=1)
 temp = people[2020].join(temp)
 temp.loc[:,'1.1.1.1':'12.5.3.5'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/temp['weight'])
 hhd_ghg['2020_2019cpi'] = cp.copy(temp)
-name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_2020.csv'
+name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2019_multipliers_2020_cpi.csv'
 temp.to_csv(name)
 print(year +  ' with 2019 multipliers saved')

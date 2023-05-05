@@ -109,8 +109,10 @@ for item in ['age_group_hrp', 'income_group', 'all']: #'hhd_type','gor modified'
         mean = mean[vars_ghg].join(mean_w[vars_weighted_means]).join(hhd_means)
         mean['group_var'] = item
         mean['year'] = int(str(year)[:4])
-        if str(year)[-3:] == 'cpi':
+        if str(year)[-4:] == '_cpi':
             mean['cpi'] = 'with_cpi'
+        elif str(year)[-4:] == '9cpi':
+            mean['cpi'] = 'with_cpi19'
         else:
             mean['cpi'] = 'regular'
         # add count data
@@ -123,7 +125,8 @@ for item in ['age_group_hrp', 'income_group', 'all']: #'hhd_type','gor modified'
         results = results.append(temp)
     # get results for all years combined   
     temp_data['cpi'] = 'regular'
-    temp_data.loc[temp_data['year'].str[-3:] == 'cpi', 'cpi'] = 'with_cpi'
+    temp_data.loc[temp_data['year'].str[-4:] == '_cpi', 'cpi'] = 'with_cpi'
+    temp_data.loc[temp_data['year'].str[-4:] == '9cpi', 'cpi'] = 'with_cpi19'
     # repeat mean and count
     # calculate weighted means
     # household level
@@ -182,25 +185,6 @@ results.loc[results['group_var'] == 'gor modified', 'group'] = results.loc[resul
 results['group'] = results['group'].str.replace('Group ', '')
 
 # add 2020 data
-hhd_ghg[2020] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2020.csv')
-hhd_ghg['2020_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_2020_cpi.csv')
-
-for year in [2020, '2020_cpi']:
-    hhd_ghg[year]['year'] = 2020
-    if str(year)[-3:] == 'cpi':
-        hhd_ghg[year]['cpi'] = 'with_cpi'
-    else:
-        hhd_ghg[year]['cpi'] = 'regular'
-    hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
-    hhd_ghg[year] = hhd_ghg[year].rename(columns={'case':'group'})
-    hhd_ghg[year].loc[hhd_ghg[year]['group'] == 'all', 'group'] = 'all_households'
-    hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
-    hhd_ghg[year]['group_var'] = hhd_ghg[year]['group_var'].map({'All':'all', 'Age of HRP':'age_group_hrp', 'Income decile':'income_group'})
-    
-    hhd_ghg[year][vars_ghg] = hhd_ghg[year][vars_ghg].apply(lambda x: x/hhd_ghg[year]['no people'])
-    
-    idx = results.columns.tolist()
-    results = results.append(hhd_ghg[year])[idx]
 
 # add equivalised results
 results[vars_ghg] = results[vars_ghg].apply(lambda x: x*results['no people'])
