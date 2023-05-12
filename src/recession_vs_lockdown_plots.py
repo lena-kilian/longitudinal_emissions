@@ -149,3 +149,6 @@ for years in ['2007-2009', '2019-2020']:
         plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_compare_' + years + '_' + item + '.png',
                     bbox_inches='tight', dpi=300)
         plt.show() 
+        
+        
+results = data_comp.set_index(['group_cat', 'group_var', 'level_2', 'type'])[['Percentage difference']].unstack(level=['type', 'level_2'])

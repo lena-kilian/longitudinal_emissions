@@ -26,7 +26,7 @@ from sys import platform
 if platform[:3] == 'win':
     wd = 'C:/Users/geolki/Documents/PhD/Analysis/'
 else:
-    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds//PhD/Analysis'
+    wd = r'/Users/lenakilian/Documents/Ausbildung/UoLeeds/PhD/Analysis/'
 
 axis_og = 'tCO$_{2}$e / '
 
@@ -64,6 +64,8 @@ for pc in ['no people', 'hhld_oecd_mod']:
     data_allyears = data_ghg.loc[data_ghg['year'] == 'all'] 
     data_annual = data_ghg.loc[data_ghg['year'] != 'all'] 
     data_annual['year'] = pd.to_datetime(data_annual['year'], format="%Y")
+    
+    check = data_ghg.loc[data_ghg['year'] == '2020']
     
     inc_max = data_ghg.groupby('cpi').max()['pc_income'] *1.025
     
@@ -144,147 +146,3 @@ for pc in ['no people', 'hhld_oecd_mod']:
     plt.ylim(0, 5.5)
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_both_' + pc + '.png', bbox_inches='tight', dpi=300)
     plt.show()
-        
-    
-    ############################
-    # Barplots by demographics #
-    ############################
-    if pc == 'no people':
-        pass
-    else:
-        # All Years
-    
-        # stacked
-        color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
-        data_plot = cp.copy(data_allyears)
-
-        for cpi in ['regular', 'with_cpi']:
-            for item in data_plot[['group_var']].drop_duplicates()['group_var']:
-                temp = data_plot.loc[(data_plot['group_var'] == item) & (data_plot['cpi'] == cpi)].set_index('group')
-                income = temp[['pc_income']]
-                temp = temp[vars_ghg[:-1]]
-                # make subplot
-                fig, ax1 = plt.subplots(figsize=(len(temp.index)/3, 5))
-                # axis left
-                start = [0] * len(temp)
-                for i in range(len(temp.columns)):
-                    prod = temp.columns[i]
-                    height = temp[prod]
-                    ax1.bar(bottom=start, height=height, x=temp.index, color=color_list[i])
-                    start += height
-                ax1.set_ylabel(axis)
-                ax1.set_ylim(0, 32.5)
-                if item == 'income_group':
-                    xloc = 1.1
-                elif item == 'hhd_type':
-                    xloc = 1.63
-                else:
-                    xloc = 1.65
-                #plt.legend(temp.columns, bbox_to_anchor=(xloc, 1))
-                plt.xlabel(group_dict[item])
-                plt.xticks(rotation=90)
-                # axis right
-                ax2 = ax1.twinx()
-                ax2.plot(income.index, income['pc_income'], color='k', lw=2, linestyle='--')
-                ax2.scatter(income.index, income['pc_income'], color='k')
-                ax2.set_ylabel('Income per SPH (weekly)')
-                ax2.set_ylim(0, inc_max[cpi])
-                #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
-                # modify plot
-                plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_' + item + '_' + cpi + '_allyears_' + pc + '.png',
-                            bbox_inches='tight', dpi=300)
-                plt.show() 
-                
-                
-        for cpi in ['with_cpi', 'regular']:
-            temp = data_plot.loc[(data_plot['cpi'] == cpi)]
-            temp['group'] = temp['group'].str.replace('all_households', 'All households')
-            temp['group_cat'] = temp['group'].astype('category').cat.reorder_categories(
-                ['All households', 
-                 '18-29', '30-49', '50-64', '65-74', '75+', 
-                 'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest'])
-            temp = temp.sort_values('group_cat')
-            temp['group_cat'] = temp['group_cat'].str.replace('All households', 'All\nhouseholds')
-            fig, ax1 = plt.subplots(figsize=(7, 5))
-            # axis left
-            start = [0] * len(temp)
-            for i in range(len(vars_ghg[:-1])):
-                prod = vars_ghg[i]
-                height = temp[prod]
-                ax1.bar(bottom=start, height=height, x=temp['group_cat'], color=color_list[i], edgecolor='k', linewidth=0.5)
-                start += height
-            ax1.set_ylabel(axis)
-            ax1.set_xlabel('')
-            for j in [0.5, 5.5]:
-                ax1.axvline(x=j, linestyle='--', c='grey')
-            #ax1.set_ylim(0, 32.5)
-            #plt.legend(temp.columns, bbox_to_anchor=(xloc, 1))
-            plt.xlabel(group_dict[item])
-            plt.xticks(rotation=90)
-            # axis right
-            ax2 = ax1.twinx()
-            ax2.scatter(temp['group_cat'], temp['pc_income'], color='k')
-            ax2.set_ylabel('Income per SPH (weekly)')
-            ax2.set_ylim(0, inc_max[cpi])
-            #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
-            # modify plot
-            plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_all_cats_' + cpi + '_all_years_' + pc + '.png',
-                        bbox_inches='tight', dpi=300)
-            plt.show() 
-
-        
-        # plots by group
-        color_list = ['#226D9C', '#C3881F', '#2A8B6A', '#BA611C', '#C282B5', '#BD926E', '#F2B8E0']
-        data_plot = data_annual.loc[data_annual['year'].isin(['2007-01-01 00:00:00', '2009-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00']) == True]
-        for cpi in ['regular', 'with_cpi']:
-            for item in data_plot[['group']].drop_duplicates()['group']:
-                temp = data_plot.loc[(data_plot['group'] == item) & 
-                                     (data_plot['cpi'] == cpi)].set_index('year')
-                group_var = temp['group_var'][0]
-                income = temp[['pc_income']]
-                temp = temp[vars_ghg[:-1]]
-                # make subplot
-                fig, ax1 = plt.subplots(figsize=(int(len(temp.index)/4), 5))
-                # axis left
-                start = [0] * len(temp)
-                for i in range(len(temp.columns)):
-                    prod = temp.columns[i]
-                    height = temp[prod]
-                    ax1.bar(bottom=start, height=height, x=[str(x)[:4] for x in temp.index], color=color_list[i], linewidth=0.5, edgecolor='k')
-                    start += height
-                ax1.set_ylabel(axis)
-                ax1.set_ylim(0, 32.5)
-                ax1.axvline(1.5, c='k', ls='--', lw=0.5)
-                plt.xlabel('Year')
-                plt.xticks(rotation=90)
-                # axis right
-                ax2 = ax1.twinx()
-                ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
-                ax2.set_ylabel('Income per SPH (weekly)')
-                ax2.set_ylim(0, inc_max[cpi])
-                #plt.legend(['Income'], bbox_to_anchor=(1.3, 0.5))
-                # modify plot
-                plt.title(item.replace('\n', ' '))
-                name = item.replace('\n', '_').replace(' ', '_').replace('/', '_')
-                plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_HHDs_comp_years_' + group_var + '_'  + name + '_' + cpi + '_' + pc + '.png',
-                            bbox_inches='tight', dpi=300)
-                plt.show()
-                
-        # plots by group
-        fig, ax1 = plt.subplots(figsize=(int(len(temp.index)/4), 5))
-        # axis left
-        temp2 = temp.stack().reset_index().rename(columns={'level_1':'Product Category', 0:'ghg'})
-        sns.barplot(ax=ax1, data=temp2, x='year', y='ghg', hue='Product Category', palette=sns.color_palette(color_list), edgecolor='k')
-        ax1.legend(bbox_to_anchor=(2, 1))
-        # axis right
-        ax2 = ax1.twinx()
-        ax2.scatter([str(x)[:4] for x in income.index], income['pc_income'], color='k')
-        ax2.set_ylabel('Income per SPH (weekly)')
-        ax2.set_ylim(0, inc_max[cpi])
-        ax2.legend(['Income'], bbox_to_anchor=(4, 0.5))
-        # modify plot
-        plt.title('LEGEND ONLY')
-        name = item.replace('\n', '_').replace(' ', '_').replace('/', '_')
-        plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/barplot_stacked_LEGEND_' + pc + '.png',
-                    bbox_inches='tight', dpi=300)
-        plt.show()
