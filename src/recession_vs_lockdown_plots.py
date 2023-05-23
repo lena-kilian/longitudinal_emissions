@@ -54,10 +54,10 @@ data_comp['type'] = data_comp['year'].map({'2007':'2007-2009', '2009':'2007-2009
 data_comp['year_type'] = data_comp['year'].map({'2007':'First year', '2009':'Last year', '2019':'First year', '2020':'Last year'})
 
 data_comp['keep'] = False
-data_comp.loc[(data_comp['year'] == '2007') & (data_comp['cpi'] == 'regular'), 'keep'] = True
+data_comp.loc[(data_comp['year'] == '2007') & (data_comp['cpi'] == 'with_cpi'), 'keep'] = True
 data_comp.loc[(data_comp['year'] == '2009') & (data_comp['cpi'] == 'with_cpi'), 'keep'] = True
-data_comp.loc[(data_comp['year'] == '2019') & (data_comp['cpi'] == 'regular'), 'keep'] = True
-data_comp.loc[(data_comp['year'] == '2020') & (data_comp['cpi'] == 'with_cpi19'), 'keep'] = True
+data_comp.loc[(data_comp['year'] == '2019') & (data_comp['cpi'] == 'with_cpi'), 'keep'] = True
+data_comp.loc[(data_comp['year'] == '2020') & (data_comp['cpi'] == 'with_cpi'), 'keep'] = True
 
 data_comp = data_comp.loc[data_comp['keep'] == True].drop(['keep', 'cpi', 'pc'], axis=1)
 

@@ -48,6 +48,10 @@ for year in list(range(2001, 2021)):
     temp[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')
     temp[str(year) + '_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '_cpi.csv')
 
+# remove households with main income sources other than wages, pensions, and benefits
+for year in list(temp.keys()):
+    temp[year] = temp[year].loc[temp[year]['inc_source_code'] != 'Other']
+
 # edit variables where needed
 for year in list(temp.keys()):
     temp[year] = temp[year].rename(columns=cat_dict).sum(axis=1, level=0).set_index('case')
@@ -61,7 +65,7 @@ for year in list(temp.keys()):
         temp[year]['cpi'] = 'regular'
     
     hhd_ghg = hhd_ghg.append(temp[year].reset_index()[['case', 'year', 'cpi', 'age_group_hrp', 'income_group', 'all', 'income anonymised'] + vars_ghg])
-
+    
 income_dict = dict(zip(list(range(10)),
                        ['Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest']))
 hhd_ghg['income_group'] = hhd_ghg['income_group'].map(income_dict)

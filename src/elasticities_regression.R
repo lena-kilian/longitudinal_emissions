@@ -22,7 +22,7 @@ for (item in c('all', 'age_group_hrp', 'income_group')){
   for (pt in product_list){
     for (cpi in c('cpi', 'regular')){
       # add results by year
-      for (yr in seq(2001, 2019)){
+      for (yr in seq(2001, 2020)){
         yr_str = paste('Year', yr, sep='_')
         temp <- data
         temp['group'] <- temp[item]
