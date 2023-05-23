@@ -85,9 +85,11 @@ for year in list(lcfs.keys()):
     people[year]['pc_income'] = people[year]['income anonymised'] / people[year][pop]
     q = ps.Quantiles(people[year]['pc_income'], k=10)
     people[year]['income_group'] = people[year]['pc_income'].map(q)
-    people[year]['income_group'] = [x[0] for x in people[year]['income_group']]
+    people[year]['income_group'] = [x[0] for x in people[year]['income_group']] 
     
-    people[year]['pc_income'] = people[year]['income anonymised'] / people[year]['no people']
+    # add variable on source of income
+    people[year]['inc_source_code'] = 'Wages, benefits, pensions'
+    people[year].loc[(people[year]['income_source'] == 3) | (people[year]['income_source'] == 6), 'inc_source_code'] = 'Other'  
         
     # gather spend      
     lcfs[year] = lcfs[year].loc[:,'1.1.1.1':'12.5.3.5'].astype(float).apply(lambda x: x*lcfs[year]['weight'])
@@ -124,9 +126,6 @@ for year in [str(y) + '_cpi' for y in years]:
     print(year +  ' with 2007 multipliers saved')
     
 # save emissions for 2020 using 2019 multipliers
-
-
-
 ref_year = 2019
 multiplier_ref_year = multipliers[ref_year][['multipliers']]
 

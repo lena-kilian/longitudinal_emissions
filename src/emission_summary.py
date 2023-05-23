@@ -56,9 +56,13 @@ for year in list(hhd_ghg.keys()):
     hhd_ghg[year]['pop'] = hhd_ghg[year]['weight'] * hhd_ghg[year]['no people']
     hhd_ghg[year]['no_females'] = hhd_ghg[year][['females aged <2', 'females aged 2-4', 'females aged 5-17', 'females aged 18-44', 'females aged 45-59',
                                                  'females aged 60-64', 'females aged 65-69', 'females aged >69']].sum(1)
-    hhd_ghg[year]['no_males'] = hhd_ghg[year]['no people'] - hhd_ghg[year]['no_females']        
+    hhd_ghg[year]['no_males'] = hhd_ghg[year]['no people'] - hhd_ghg[year]['no_females']  
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     hhd_ghg[year]['all'] = 'all_households'
+    
+# remove households with main income sources other than wages, pensions, and benefits
+for year in list(hhd_ghg.keys()):
+    hhd_ghg[year] = hhd_ghg[year].loc[hhd_ghg[year]['inc_source_code'] != 'Other']
 
 # calculate weighted means
 results = pd.DataFrame(columns=['year'])

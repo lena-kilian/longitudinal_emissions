@@ -57,6 +57,7 @@ def import_lcfs(year, dvhh_file, dvper_file):
     useful_data['tenure type'] = dvhh['a122']
     useful_data['GOR modified'] = dvhh['gorx']
     useful_data['OA class 1D'] =  np.zeros(shape=len(dvhh))
+    useful_data['income_source'] = dvhh['p425']
     # OAC data only available from 2007
     if year > 2006: 
         useful_data['OAC_Supergroup'] = dvhh['oac1d']
