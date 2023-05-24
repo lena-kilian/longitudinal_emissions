@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jan 18 2021
-CO2 emissions for MSOAs or LSOAs combining 2 years at a time, IO part adapted from code by Anne Owen
+CO2 emissions for LCFS households, IO part adapted from code by Anne Owen
 @author: lenakilian
 """
 
@@ -126,19 +126,11 @@ def make_y_hh_307(Y,coicop_exp_tot,years,concs_dict2,meta):
             conc = np.tile(concs_dict2[str(a)],(meta['reg']['len'],1))
             countend = np.sum(np.sum(concs_dict2[str(a)+'a']))+countstart
             category_total = np.dot(coicop_exp_tot[yr],concs_dict2[str(a)+'a'])
-            #test1 = np.dot(np.diag(Y[yr].iloc[:,a]),conc)
             test1 = np.dot(conc,np.diag(category_total))
-            #test2 = np.tile(np.dot(Y[yr].iloc[:,a],conc),(1590,1))
             test2 = np.transpose(np.tile(np.dot(conc,category_total),(np.size(conc,1),1)))
             test3 = test1/test2
             test3 = np.nan_to_num(test3, copy=True)
-            #num = np.dot(conc,np.diag(category_total))
-            #test4 = np.multiply(num,test3)
             test4 = np.dot(np.diag(Y[yr].iloc[:,a]),test3)
-            #den = np.dot(np.diag(np.sum(num,1)),concs_dict2[str(a)])
-            #prop = np.divide(num,den)
-            #prop = np.nan_to_num(prop, copy=True)
-            #temp[:,countstart:countend] = (np.dot(np.diag(total_Yhh_106[yr].iloc[:,a]),prop))
             temp[:,countstart:countend] = test4
             col[countstart:countend] = concs_dict2[str(a) + 'a'].columns
             countstart = countend
@@ -232,7 +224,7 @@ def make_footprint(hhdspend, wd):
     years = list(hhdspend.keys())
 
     # load and clean up concs to make it usable
-    # these translate IO data sectors to LCFS products/services
+    # lookup for sectors to COICOP and COICOP to COICOP
     concs_dict2 = pd.read_excel(wd + 'data/raw/Concordances/ONS_to_COICOP_LCF_concs_2021.xlsx', sheet_name=None, index_col=0)
 
 #######################
