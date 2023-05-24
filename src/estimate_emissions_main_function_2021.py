@@ -184,6 +184,10 @@ def make_ylcf_props(hhspenddata,years):
     return ylcf_props
 
 
+###########
+# Run all #
+###########
+
 def makefoot(S,U,Y,stressor,years):
     footbyCOICOP = {}
     for yr in years:
@@ -203,9 +207,6 @@ def makefoot(S,U,Y,stressor,years):
 
     return footbyCOICOP
 
-###########
-# Run all #
-###########
 
 def make_footprint(hhdspend, wd):
     
