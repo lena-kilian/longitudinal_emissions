@@ -237,7 +237,7 @@ def make_footprint(hhdspend, wd):
     
     # Load UKMRIO and calculate means for UKMRIO data
     ukmrio = {}; #means = {}
-    for data in ['ghg', 'uk_ghg_direct', 'U', 'S', 'Y']:
+    for data in ['U', 'S', 'Y', 'ghg', 'uk_ghg_direct', ]:
         ukmrio[data] = pickle.load(open(wd + 'data/raw/UKMRIO_2022_2/' + data + '.p', "rb" ))
         
     ukmrio['Y'] = convert36to33(ukmrio['Y'], concs_dict2, years)
