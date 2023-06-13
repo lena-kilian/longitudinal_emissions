@@ -32,10 +32,9 @@ axis = 'tCO$_{2}$e'
 
 plt.rcParams.update({'font.family':'Times New Roman', 'font.size':12})
 
-ref_year = 2015 # choose year which expenditure is adjusted to (by CPI)
 years = list(range(2001, 2021))
 
-comparisons = ['2007-2009', '2010-2011', '2013-2014', '2019-2020']
+comparisons = ['2007-2009', '2015-2016', '2019-2020']
   
 # import lookups
 cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
@@ -59,7 +58,7 @@ group_dict = {'hhd_type':'Household Composition', 'age_group_hrp':'Age of HRP', 
 # import data and clean
 hhd_ghg = {}; pc_ghg = {}
 for year in years:
-    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '_cpi.csv')
+    hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')
     hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
     
@@ -93,6 +92,8 @@ for cat in vars_ghg:
                 temp['mean'] = weighted_stats.mean; temp['se'] = weighted_stats.std_mean;
                 
                 summary = summary.append(temp);
+                
+check = summary.loc[(summary['hhd_group'] == 'All') & (summary['product'] == 'Total')]
                 
 summary['comparison'] = 'None'; summary['year_order'] = 'None'
 for comp in comparisons:
