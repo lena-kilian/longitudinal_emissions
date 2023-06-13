@@ -97,7 +97,7 @@ for year in years:
 
 # load CPI corrector data
 # adjust to CPI
-ref_year = 2007 # choose year which to adjust expenditure to
+ref_year = 2015 # choose year which to adjust expenditure to
 # import cpi cat lookup
 cpi_lookup = pd.read_excel(wd + 'data/processed/CPI_lookup.xlsx', sheet_name='Sheet4')
 cpi_lookup['ccp_lcfs'] = [x.split(' ')[0] for x in cpi_lookup['ccp_lcfs']]

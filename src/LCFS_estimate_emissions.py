@@ -35,7 +35,7 @@ lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005',
                              '2020-2021']))
 
 
-ref_year = 2007 # choose year which expenditure is adjusted to (by CPI)
+ref_year = 2015 # choose year which expenditure is adjusted to (by CPI)
 
 hhd_type_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp3_lookup.xlsx', sheet_name='hhd_type')
 
@@ -123,17 +123,17 @@ for year in [str(y) + '_cpi' for y in years]:
     hhd_ghg[year] = cp.copy(temp)
     name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '.csv'
     temp.to_csv(name)
-    print(year +  ' with 2007 multipliers saved')
+    print(year +  ' with ' + str(ref_year) + ' multipliers saved')
     
 # save emissions for 2020 using 2019 multipliers
-ref_year = 2019
+ref_year = 2019; year = 2020
 multiplier_ref_year = multipliers[ref_year][['multipliers']]
 
-temp = lcfs['2020_2019cpi'].T.join(multiplier_ref_year)
+temp = lcfs[str(year) + '_' + str(ref_year) + 'cpi'].T.join(multiplier_ref_year)
 temp = temp.apply(lambda x: x*temp['multipliers']).drop(['multipliers'], axis=1).T
-temp = people[2020].join(temp)
+temp = people[year].join(temp)
 temp.loc[:,'1.1.1.1':'12.5.3.5'] = temp.loc[:,'1.1.1.1':'12.5.3.5'].apply(lambda x: x/temp['weight'])
-hhd_ghg['2020_2019cpi'] = cp.copy(temp)
-name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_2019_multipliers_2020_cpi.csv'
+hhd_ghg[str(year) + '_' + str(ref_year) + 'cpi'] = cp.copy(temp)
+name = wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '.csv'
 temp.to_csv(name)
-print(year +  ' with 2019 multipliers saved')
+print(str(year) +  ' with ' + str(ref_year) + ' multipliers saved')
