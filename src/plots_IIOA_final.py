@@ -216,13 +216,24 @@ anova_data['all'] = 'all'
 results = pd.DataFrame(columns=['product'])
 for cat in vars_ghg[:-1]:
     for comp in comparisons:
+        #perform the repeated measures ANOVA
+        temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data['yr_group'] == comp)]
+        mod = 'GHG ~ C(year)'
+        model = ols(mod, data=temp).fit()
+        
+        temp = pd.DataFrame(sm.stats.anova_lm(model, typ=2))[['PR(>F)']]
+        temp.columns = ['p-value']
+        temp['group1'] = (comp.split('-')[0], comp.split('-')[1][:-4]); temp['group2'] = temp['group1']
+        
+        temp['product'] = cat; temp['hhd_group'] = 'All'; temp['comp'] = comp
+        
+        results = results.append(temp)
         for hhd_group in ['age_group_hrp', 'income_group']:
             #perform the repeated measures ANOVA
             temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data['yr_group'] == comp)]
             temp['group'] = temp[hhd_group]
             mod = 'GHG ~ C(year) + C(group) + C(year):C(group)'
             model = ols(mod, data=temp).fit()
-            print(cat, sm.stats.anova_lm(model, typ=2))
             
             #res.tukey_hsd(df=temp, res_var='GHG', xfac_var='group', anova_model=mod)
             #res.tukey_summary
@@ -236,6 +247,7 @@ for cat in vars_ghg[:-1]:
             temp['product'] = cat; temp['hhd_group'] = hhd_group; temp['comp'] = comp
             
             results = results.append(temp)
+        
 
 results['year_1'] = [x[0] for x in results['group1']]
 results['year_2'] = [x[0] for x in results['group2']]
