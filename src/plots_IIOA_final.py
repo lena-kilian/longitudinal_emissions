@@ -32,17 +32,14 @@ axis = 'tCO$_{2}$e'
 
 plt.rcParams.update({'font.family':'Times New Roman', 'font.size':12})
 
-ref_year = 2015 # choose year which expenditure is adjusted to (by CPI)
-years = list(range(2001, 2021))
+years = [2007, 2009, 2019, 2020]
 
 group_dict = dict(zip(['All', '18-29', '30-49', '50-64', '65-74', '75+', 
-                       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ,'Other'], 
                       ['All housheolds', 'Age 18-29', 'Age 30-49', 'Age 50-64', 'Age 65-74', 'Age 75+',
-                       'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest',
                        'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest', 'Other']))
 
-comparisons = ['2007-2009', '2010-2011', '2013-2014', '2019-2020']
+comparisons = ['2007-2009', '2019-2020']
   
 # import lookups
 col = 'Category_3'
@@ -56,6 +53,10 @@ vars_ghg = cat_lookup[[col]].drop_duplicates()[col].tolist() + ['Total']
 # import data and clean
 hhd_ghg = {}; pc_ghg = {}
 for year in years:
+    if year < 2010:
+        ref_year = 2007
+    else:
+        ref_year = 2019
     hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '_cpi.csv')
     hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
@@ -102,11 +103,10 @@ check = summary.loc[(summary['hhd_group'] == 'All') & (summary['product'] == 'To
 check2 = summary.loc[(summary['hhd_group'] == 'All')].set_index(['year', 'product', 'hhd_group', 'group'])[['mean']].unstack('product')
 
 check3 = summary.set_index(['year', 'product', 'hhd_group', 'group'])[['mean']].unstack('year').droplevel(axis=1, level=0)
-for year in years[:-1]:
-    year1 = year
-    year2 = year + 1
-    check3[str(year1) + '-' + str(year2)] = check3[year2] - check3[year1]
+
 check3['2007-2009'] = check3[2009] - check3[2007]
+check3['2019-2020'] = check3[2020] - check3[2019]
+
 check3 = check3.drop(years, axis=1)
 
 check4 = check3[comparisons].unstack(level=0).reset_index()
