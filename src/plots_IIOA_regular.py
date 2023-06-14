@@ -34,6 +34,13 @@ plt.rcParams.update({'font.family':'Times New Roman', 'font.size':12})
 
 years = list(range(2001, 2021))
 
+group_dict = dict(zip(['All', '18-29', '30-49', '50-64', '65-74', '75+', 
+                       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                       0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ,'Other'], 
+                      ['All housheolds', 'Age 18-29', 'Age 30-49', 'Age 50-64', 'Age 65-74', 'Age 75+',
+                       'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest',
+                       'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest', 'Other']))
+
 comparisons = ['2007-2009', '2015-2016', '2019-2020']
   
 # import lookups
@@ -52,15 +59,13 @@ vars_ghg_dict = ['Food and\nDrinks', 'Housing, water\nand waste', 'Electricity, 
                  'Recreation, culture,\nand clothing', 'Other\nconsumption',
                  'Total']
 
-group_dict = {'hhd_type':'Household Composition', 'age_group_hrp':'Age of HRP', 'gor modified':'Region', 
-              'income_group':'Income Decile', 'all':'All'}
-
 # import data and clean
 hhd_ghg = {}; pc_ghg = {}
 for year in years:
     hhd_ghg[year] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')
     hhd_ghg[year] = hhd_ghg[year].rename(columns=cat_dict).sum(axis=1, level=0)
     hhd_ghg[year]['Total'] = hhd_ghg[year][vars_ghg[:-1]].sum(1)
+    hhd_ghg[year] = hhd_ghg[year].loc[hhd_ghg[year]['age_group_hrp'] != 'Other']
     
     pc_ghg[year] = cp.copy(hhd_ghg[year])
     pc_ghg[year][['income anonymised'] + vars_ghg] = pc_ghg[year][['income anonymised'] + vars_ghg].apply(lambda x: x/pc_ghg[year]['hhld_oecd_mod'])
@@ -73,7 +78,7 @@ for cat in vars_ghg:
     for year in years:
         # All households
         temp = pd.DataFrame(index=[0]);
-        temp['year'] = year; temp['product'] = cat; temp['hhd_group'] = 'All'; temp['group'] = 'All';
+        temp['year'] = year; temp['product'] = cat; temp['hhd_group'] = 'All'; temp['group'] = group_dict['All'];
         
         weighted_stats = DescrStatsW(pc_ghg[year][cat], weights=pc_ghg[year]['pop_mod'], ddof=0);
         temp['mean'] = weighted_stats.mean; temp['se'] = weighted_stats.std_mean;
@@ -86,15 +91,40 @@ for cat in vars_ghg:
                 temp_data = pc_ghg[year].loc[pc_ghg[year][item] == group];
                 
                 temp = pd.DataFrame(index=[0]);
-                temp['year'] = year; temp['product'] = cat; temp['hhd_group'] = item; temp['group'] = str(group);
+                temp['year'] = year; temp['product'] = cat; temp['hhd_group'] = item; temp['group'] = group_dict[group];
                 
                 weighted_stats = DescrStatsW(temp_data[cat], weights=temp_data['pop_mod'], ddof=0);
                 temp['mean'] = weighted_stats.mean; temp['se'] = weighted_stats.std_mean;
                 
                 summary = summary.append(temp);
                 
+summary['group'] = pd.Categorical(summary['group'], 
+                                  categories=['All housheolds', 
+                                              'Age 18-29', 'Age 30-49', 'Age 50-64', 'Age 65-74', 'Age 75+',
+                                              'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest'],
+                                  ordered=True)
+
+summary[['group']].drop_duplicates()
+
 check = summary.loc[(summary['hhd_group'] == 'All') & (summary['product'] == 'Total')]
-                
+check2 = summary.loc[(summary['hhd_group'] == 'All')].set_index(['year', 'product', 'hhd_group', 'group'])[['mean']].unstack('product')
+
+check3 = summary.set_index(['year', 'product', 'hhd_group', 'group'])[['mean']].unstack('year').droplevel(axis=1, level=0)
+for year in years[:-1]:
+    year1 = year
+    year2 = year + 1
+    check3[str(year1) + '-' + str(year2)] = check3[year2] - check3[year1]
+check3['2007-2009'] = check3[2009] - check3[2007]
+check3 = check3.drop(years, axis=1)
+
+check4 = check3[comparisons].unstack(level=0).reset_index()
+check4 = check4.loc[(check4['group'] != 'Other')].swaplevel(axis=1).drop('Total', axis=1)
+
+# plots differences
+
+
+# plots ghg
+  
 summary['comparison'] = 'None'; summary['year_order'] = 'None'
 for comp in comparisons:
     summary.loc[(summary['year'].astype(str) == comp[:4]) | (summary['year'].astype(str) == comp[-4:]), 'comparison'] = comp
@@ -113,4 +143,4 @@ for cat in vars_ghg:
         plt.title(cat + ' - ' + comp)
 
         
-    
+
