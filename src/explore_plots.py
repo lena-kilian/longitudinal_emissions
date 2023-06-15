@@ -146,3 +146,4 @@ for pc in ['no people', 'hhld_oecd_mod']:
     plt.ylim(0, 5.5)
     plt.savefig(wd + 'Longitudinal_Emissions/outputs/Explore_plots/lineplot_HHDs_both_' + pc + '.png', bbox_inches='tight', dpi=300)
     plt.show()
+    

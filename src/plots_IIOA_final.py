@@ -39,15 +39,18 @@ axis = 'tCO$_{2}$e/SPH'
 
 plt.rcParams.update({'font.family':'Times New Roman', 'font.size':12})
 
-years = [2007, 2009, 2010, 2011, 2013, 2014, 2019, 2020]
+comparisons = ['2008-2009_cpi', '2019-2020_cpi'] # '2007-2009', '2019-2020', 
+
+years = []
+for comp in comparisons:
+    years.append(int(comp[:4]))
+    years.append(int(comp[5:-4]))
 
 group_dict = dict(zip(['All', '18-29', '30-49', '50-64', '65-74', '75+', 
                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ,'Other'], 
                       ['All housheolds', 'Age 18-29', 'Age 30-49', 'Age 50-64', 'Age 65-74', 'Age 75+',
                        'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest', 'Other']))
 
-comparisons = ['2007-2009_cpi', '2010-2011_cpi', '2013-2014_cpi', '2019-2020_cpi'] # '2007-2009', '2019-2020', 
-  
 # import lookups
 col = 'Category_3'
 cat_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/lcfs_desc_longitudinal_lookup.xlsx')
@@ -60,14 +63,9 @@ vars_ghg = cat_lookup[[col]].drop_duplicates()[col].tolist() + ['Total']
 # import data and clean
 hhd_ghg = {}; pc_ghg = {}
 for year in years:
-    if year in [2007, 2009]:
-        ref_year = 2007
-    elif year in [2010, 2011]:
-        ref_year = 2010
-    elif year in [2013, 2014]:
-        ref_year = 2013
-    else:
-        ref_year = 2019
+    for comp in comparisons:
+        if str(year) in comp:
+            ref_year = int(comp[:4])
     #hhd_ghg[str(year)] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')
     hhd_ghg[str(year) + '_cpi'] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(ref_year) + '_multipliers_' + str(year) + '_cpi.csv')
 
@@ -140,9 +138,6 @@ order = ['Food and non-alcoholic drinks', 'Eating and drinking out',
          'Housing, water and waste', 'Electricity, gas, liquid and solid fuels', 'Furnishing and home maintenance',
          'Healthcare', 'Other goods and services']
 
-
-
-
 check4 = check3[comparisons].loc[order].T.stack(level='product').T.reset_index()
 
 cmap = matplotlib.cm.get_cmap('tab20c')
@@ -209,9 +204,6 @@ for year in years:
 anova_data['yr_group'] = '2019-2020_cpi'
 for comp in comparisons[:-1]:
     anova_data.loc[(anova_data['year'].str[:4].isin([comp.split('-')[0], comp.split('-')[1][:4]]) == True), 'yr_group'] = comp
-    
-anova_data.loc[(anova_data['year'] == '2007_cpi') |
-               (anova_data['year'] == '2009_cpi'), 'yr_group'] = '2007-2009_cpi'
 
 anova_data = anova_data.set_index(['case', 'year', 'yr_group', 'age_group_hrp', 'income_group'])[vars_ghg].stack().reset_index()\
     .rename(columns={'level_5':'product', 0:'GHG'})
