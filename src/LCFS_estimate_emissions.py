@@ -35,7 +35,7 @@ lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005',
                              '2020-2021']))
 
 
-ref_year = 2019 # choose year which expenditure is adjusted to (by CPI)
+ref_year = 2008 # choose year which expenditure is adjusted to (by CPI)
 
 hhd_type_lookup = pd.read_excel(wd + 'data/processed/LCFS/Meta/hhd_comp3_lookup.xlsx', sheet_name='hhd_type')
 

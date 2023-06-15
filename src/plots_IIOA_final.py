@@ -23,6 +23,8 @@ import seaborn as sns
 import matplotlib
 from matplotlib.colors import LinearSegmentedColormap
 from bioinfokit.analys import stat
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
 
 res = stat()
 
@@ -37,14 +39,14 @@ axis = 'tCO$_{2}$e/SPH'
 
 plt.rcParams.update({'font.family':'Times New Roman', 'font.size':12})
 
-years = [2007, 2009, 2019, 2020]
+years = [2007, 2009, 2010, 2011, 2013, 2014, 2019, 2020]
 
 group_dict = dict(zip(['All', '18-29', '30-49', '50-64', '65-74', '75+', 
                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ,'Other'], 
                       ['All housheolds', 'Age 18-29', 'Age 30-49', 'Age 50-64', 'Age 65-74', 'Age 75+',
                        'Lowest', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', 'Highest', 'Other']))
 
-comparisons = ['2007-2009_cpi', '2019-2020_cpi'] # '2007-2009', '2019-2020', 
+comparisons = ['2007-2009_cpi', '2010-2011_cpi', '2013-2014_cpi', '2019-2020_cpi'] # '2007-2009', '2019-2020', 
   
 # import lookups
 col = 'Category_3'
@@ -58,8 +60,12 @@ vars_ghg = cat_lookup[[col]].drop_duplicates()[col].tolist() + ['Total']
 # import data and clean
 hhd_ghg = {}; pc_ghg = {}
 for year in years:
-    if year < 2010:
+    if year in [2007, 2009]:
         ref_year = 2007
+    elif year in [2010, 2011]:
+        ref_year = 2010
+    elif year in [2013, 2014]:
+        ref_year = 2013
     else:
         ref_year = 2019
     #hhd_ghg[str(year)] = pd.read_csv(wd + 'data/processed/GHG_Estimates_LCFS/Household_emissions_' + str(year) + '.csv')
@@ -115,10 +121,8 @@ check2 = summary.loc[(summary['hhd_group'] == 'All')].set_index(['year', 'produc
 
 check3 = summary.set_index(['year', 'product', 'hhd_group', 'group'])[['mean']].unstack('year').droplevel(axis=1, level=0)
 
-#check3['2007-2009'] = check3['2009'] - check3['2007']
-#check3['2019-2020'] = check3['2020'] - check3['2019']
-check3['2007-2009_cpi'] = check3['2009_cpi'] - check3['2007_cpi']
-check3['2019-2020_cpi'] = check3['2020_cpi'] - check3['2019_cpi']
+for comp in comparisons:
+    check3[comp] = check3[comp.split('-')[1]] - check3[comp.split('-')[0] + '_cpi']
 
 check3 = check3.drop(years, axis=1)
 
@@ -197,35 +201,44 @@ for cat in vars_ghg:
 
 # ANOVA
 
-import statsmodels.api as sm
-from statsmodels.formula.api import ols
-
 anova_data = pd.DataFrame(columns=['year'])
 for year in years:
     temp = pc_ghg[year]
     temp['year'] = year
     anova_data = anova_data.append(temp)
 anova_data['yr_group'] = '2019-2020_cpi'
+for comp in comparisons[:-1]:
+    anova_data.loc[(anova_data['year'].str[:4].isin([comp.split('-')[0], comp.split('-')[1][:4]]) == True), 'yr_group'] = comp
+    
 anova_data.loc[(anova_data['year'] == '2007_cpi') |
                (anova_data['year'] == '2009_cpi'), 'yr_group'] = '2007-2009_cpi'
 
-anova_data = anova_data.set_index(['case', 'year', 'yr_group', 'age_group_hrp', 'income_group'])[vars_ghg[:-1]].stack().reset_index()\
+anova_data = anova_data.set_index(['case', 'year', 'yr_group', 'age_group_hrp', 'income_group'])[vars_ghg].stack().reset_index()\
     .rename(columns={'level_5':'product', 0:'GHG'})
 anova_data['all'] = 'all'
 
 results = pd.DataFrame(columns=['product'])
-for cat in vars_ghg[:-1]:
+for cat in vars_ghg:
     for comp in comparisons:
         #perform the repeated measures ANOVA
         temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data['yr_group'] == comp)]
         mod = 'GHG ~ C(year)'
         model = ols(mod, data=temp).fit()
         
+        yr1 = comp.split('-')[0] + '_cpi'
+        yr2 = comp.split('-')[1]
+        
+        diff = temp.groupby('year').mean()
+        diff = diff.loc[yr2, 'GHG'] - diff.loc[yr1, 'GHG']
+        
         temp = pd.DataFrame(sm.stats.anova_lm(model, typ=2))[['PR(>F)']]
         temp.columns = ['p-value']
-        temp['group1'] = (comp.split('-')[0], comp.split('-')[1][:-4]); temp['group2'] = temp['group1']
+        temp['group1'] = [(yr1, yr2) for x in range(len(temp))]; temp['group2'] = temp['group1']
         
-        temp['product'] = cat; temp['hhd_group'] = 'All'; temp['comp'] = comp
+        temp['Diff'] = diff
+        temp['product'] = cat
+        temp['hhd_group'] = 'All'
+        temp['comp'] = comp
         
         results = results.append(temp)
         for hhd_group in ['age_group_hrp', 'income_group']:
@@ -242,11 +255,15 @@ for cat in vars_ghg[:-1]:
             #res.tukey_summary
             
             res.tukey_hsd(df=temp, res_var='GHG', xfac_var=['year', 'group'], anova_model=mod)
-            temp = res.tukey_summary[['group1', 'group2', 'p-value']]
+            temp = res.tukey_summary[['group1', 'group2', 'p-value', 'Diff']]
             
+            temp['Diff'] = temp['Diff'] *-1
+             
             temp['product'] = cat; temp['hhd_group'] = hhd_group; temp['comp'] = comp
             
             results = results.append(temp)
+        print(comp)
+    print(cat)
         
 
 results['year_1'] = [x[0] for x in results['group1']]
@@ -256,6 +273,15 @@ results['group_1'] = [str(x[1]) for x in results['group1']]
 results['group_2'] = [str(x[1]) for x in results['group2']]
 
 results.index = list(range(len(results)))
+
+
+results_all = results.loc[(results['hhd_group'] == 'All')].dropna(how='any')
+results_all['sig'] = ' '
+results_all.loc[results_all['p-value'] < 0.05, 'sig'] = '*'
+results_all.loc[results_all['p-value'] < 0.01, 'sig'] = '**'
+results_all = results_all.set_index(['product', 'comp'])[['sig', 'Diff']].unstack(level='comp')\
+    .loc[['Total'] + order].swaplevel(axis=1)
+
 
 results_age = results.loc[(results['hhd_group'] == 'age_group_hrp') & 
                           ((results['group_1'] == results['group_2']) | (results['year_1'] == results['year_2']))]
@@ -309,8 +335,17 @@ results_inc_group = results_inc.loc[results_inc['type'] == 'group'].set_index(['
     .unstack(['product'])
     
     
-results_summary = results_age_summary.reset_index().append(results_inc_summary.reset_index())
-    
+results_summary = results_age_summary.droplevel(axis=1, level=0).reset_index()\
+    .append(results_inc_summary.droplevel(axis=1, level=0).reset_index())
+
+check = results_summary.set_index(['hhd_group', 'comp', 'type'])[order]
+
+check_total = results_summary.set_index(['hhd_group', 'comp', 'type'])[['Total']]
+
+for var_type in ['year', 'group']:
+    temp = results_summary.loc[results_summary['type'] == var_type].set_index(['hhd_group', 'comp', 'type']).stack()\
+        .reset_index().rename(columns={0:'pct'})
+    sns.barplot(data=temp, x='comp', y='pct', hue='product')
     
 '''
 for item in ['year_1', 'year_2']:

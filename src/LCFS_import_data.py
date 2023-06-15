@@ -33,6 +33,8 @@ lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005',
                              '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020',
                              '2020-2021']))
 
+ref_year = 2008 # choose year which to adjust expenditure to
+
 # Define function needed
 def isNaN(string):
     return string != string
@@ -97,7 +99,6 @@ for year in years:
 
 # load CPI corrector data
 # adjust to CPI
-ref_year = 2019 # choose year which to adjust expenditure to
 # import cpi cat lookup
 cpi_lookup = pd.read_excel(wd + 'data/processed/CPI_lookup.xlsx', sheet_name='Sheet4')
 cpi_lookup['ccp_lcfs'] = [x.split(' ')[0] for x in cpi_lookup['ccp_lcfs']]
