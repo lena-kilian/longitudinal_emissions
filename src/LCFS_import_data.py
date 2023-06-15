@@ -33,7 +33,7 @@ lcf_years = dict(zip(years, ['2001-2002', '2002-2003', '2003-2004', '2004-2005',
                              '2010', '2011', '2012', '2013', '2014', '2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020',
                              '2020-2021']))
 
-ref_year = 2008 # choose year which to adjust expenditure to
+ref_year = 2006 # choose year which to adjust expenditure to
 
 # Define function needed
 def isNaN(string):

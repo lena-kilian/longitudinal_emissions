@@ -83,7 +83,9 @@ for cat in vars_ghg + ['income anonymised']:
         temp['year'] = year; temp['product'] = cat; temp['hhd_group'] = 'All'; temp['group'] = group_dict['All'];
         
         weighted_stats = DescrStatsW(pc_ghg[year][cat], weights=pc_ghg[year]['pop_mod'], ddof=0);
-        temp['mean'] = weighted_stats.mean; temp['se'] = weighted_stats.std_mean;
+        temp['mean'] = weighted_stats.mean
+        temp['se'] = weighted_stats.std_mean
+        temp['std'] = weighted_stats.std
         
         summary = summary.append(temp);
         
@@ -113,13 +115,75 @@ order = ['Food and non-alcoholic drinks', 'Eating and drinking out',
 cmap = matplotlib.cm.get_cmap('tab20c')
 cmap = [matplotlib.colors.rgb2hex(cmap(x)) for x in range(cmap.N)]
 
+my_cmap = [cmap[0], cmap[2], # Food
+           cmap[4], cmap[5], cmap[7], # Transport
+           cmap[8], cmap[9], cmap[10], # Free time
+           cmap[12], cmap[13], cmap[14], # Housing
+           cmap[16], cmap[18]] # Other
+my_cmap=LinearSegmentedColormap.from_list(my_cmap, my_cmap)    
+
 for item in summary[['group']].drop_duplicates()['group']:
-    plot_data = summary.loc[summary['group'] == item].set_index(['year', 'product'])[['mean', 'se']]
-    plot_data = check4.set_index('group')[comp][order]
+    plot_data = summary.loc[summary['group'] == item].set_index(['year', 'product'])[['mean']]\
+        .unstack(level='product').droplevel(axis=1, level=0)[order]
     plot_data.plot(kind='bar', stacked=True, figsize=(7.5, 5), cmap=my_cmap)
-    plt.xlabel('Household Group'); plt.ylabel('Change in ' + axis)
-    plt.title(comp)
-    plt.axhline(0, c='k', linestyle=':')
-    plt.axvline(0.5, c='k'); plt.axvline(5.5, c='k')
+    plt.xlabel('Household Group'); plt.ylabel(axis)
+    plt.title(item)
     plt.legend(bbox_to_anchor = (1,1))
     plt.show()
+    
+for item in ['All housheolds']:
+    plot_data = summary.loc[summary['group'] == item].set_index(['year', 'product'])[['mean']]\
+        .unstack(level='product').droplevel(axis=1, level=0)[order].loc[[2007, 2009, 2019, 2020]]
+    plot_data.plot(kind='bar', stacked=True, figsize=(7.5, 5), cmap=my_cmap)
+    plt.xlabel('Household Group'); plt.ylabel(axis)
+    plt.title(item)
+    plt.axvline(1.5, c='k')
+    plt.xlabel('')
+    plt.legend(bbox_to_anchor = (1,1))
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/prod_plot_' + item + '.png',
+                dpi=200, bbox_inches='tight')
+    plt.show()
+    
+
+results_all = pd.read_csv(wd + 'Longitudinal_Emissions/outputs/anova_result.csv', index_col=0, header=[0, 1])\
+    .swaplevel(axis=1)['sig']
+results_all.columns = [int(x[:4]) for x in results_all.columns]
+results_all = results_all.stack().reset_index().rename(columns={'level_1':'year', 0:'sig'})
+
+summary2 = summary.merge(results_all, on=['year', 'product'], how='outer')
+
+for years in [[2007, 2009], [2019, 2020]]:
+    plot_data = summary2.loc[(summary2['group'] == 'All housheolds') & 
+                             (summary2['year'].isin(years) == True) &
+                             (summary2['product'].isin(vars_ghg[:-1]) == True)][['year', 'product', 'mean', 'se', 'std', 'sig']]
+    plot_data['product'] = pd.Categorical(plot_data['product'], categories=order, ordered=True)
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+    sns.barplot(ax=ax, data=plot_data, x='product', y='mean', hue='year')
+
+    # Make some labels.
+    labels = plot_data.loc[plot_data['year'] == years[0]].drop('mean', axis=1)
+    labels = labels.merge(plot_data.groupby('product').max()[['mean']].reset_index(), on='product').set_index('product').loc[order]
+    
+    for i in range(len(labels)):
+        height=labels['mean'].tolist()[i]
+        label=labels['sig'].tolist()[i]
+        ax.text(i, height, label, ha="center", va="bottom")
+
+    x_coords = [p.get_x() + 0.5 * p.get_width() for p in ax.patches]
+    y_coords = [p.get_height() for p in ax.patches]
+    ax.errorbar(x=x_coords, y=y_coords, yerr=plot_data['se'], fmt='none', c='k')   
+
+    plt.xticks(rotation=90)
+    for i in [1.5, 4.5, 7.5, 10.5]:
+        plt.axvline(i, c='k', linestyle=':')
+    plt.legend(bbox_to_anchor=(1,1))
+    plt.xlabel('')
+    plt.ylabel(axis)
+    plt.ylim(0, labels['mean'].max() + 0.3)
+    plt.title(str(years[0]) + '-' + str(years[1]))
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/prod_plot_' + str(years[0]) + '-' + str(years[1]) + '.png',
+                dpi=200, bbox_inches='tight')
+    plt.show()
+    
+    
+check = summary.set_index(['year', 'product', 'hhd_group', 'group'])[['mean']].unstack(level='year')

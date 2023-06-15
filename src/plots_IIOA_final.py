@@ -39,7 +39,7 @@ axis = 'tCO$_{2}$e/SPH'
 
 plt.rcParams.update({'font.family':'Times New Roman', 'font.size':12})
 
-comparisons = ['2008-2009_cpi', '2019-2020_cpi'] # '2007-2009', '2019-2020', 
+comparisons = ['2007-2009_cpi', '2019-2020_cpi'] # '2007-2009', '2019-2020', 
 
 years = []
 for comp in comparisons:
@@ -159,6 +159,8 @@ for comp in comparisons:
     plt.axhline(0, c='k', linestyle=':')
     plt.axvline(0.5, c='k'); plt.axvline(5.5, c='k')
     plt.legend(bbox_to_anchor = (1,1))
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/change_plot_all_' + comp + '.png',
+                dpi=200, bbox_inches='tight')
     plt.show()
     
 for comp in comparisons:
@@ -172,7 +174,25 @@ for comp in comparisons:
     plt.axhline(0, c='k', linestyle=':')
     plt.axvline(0.5, c='k'); plt.axvline(5.5, c='k')
     plt.legend(bbox_to_anchor = (1,1))
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/change_plot_pos_' + comp + '.png',
+                dpi=200, bbox_inches='tight')
     plt.show()
+    
+for comp in comparisons:
+    plot_data = check4.set_index('group')[comp][order]
+    plot_data.plot(kind='bar', stacked=True, figsize=(7.5, 5), cmap=my_cmap)
+    plt.xlabel('Household Group'); plt.ylabel('Change in ' + axis)
+    plt.title(comp)
+    ymin = pd.DataFrame(plot_data.stack()); ymin = ymin.loc[ymin[0] < 0]
+    ymin = ymin.sum(axis=0, level=0).min() * 1.1
+    plt.ylim(ymin[0], 0)
+    plt.axhline(0, c='k', linestyle=':')
+    plt.axvline(0.5, c='k'); plt.axvline(5.5, c='k')
+    plt.legend(bbox_to_anchor = (1,1))
+    plt.savefig(wd + 'Longitudinal_Emissions/outputs/change_plot_neg_' + comp + '.png',
+                dpi=200, bbox_inches='tight')
+    plt.show()
+
 
 # plots ghg
 '''
@@ -200,20 +220,21 @@ anova_data = pd.DataFrame(columns=['year'])
 for year in years:
     temp = pc_ghg[year]
     temp['year'] = year
+    temp = temp.loc[temp.index.repeat(temp['pop_mod'].astype(int))]
     anova_data = anova_data.append(temp)
-anova_data['yr_group'] = '2019-2020_cpi'
-for comp in comparisons[:-1]:
-    anova_data.loc[(anova_data['year'].str[:4].isin([comp.split('-')[0], comp.split('-')[1][:4]]) == True), 'yr_group'] = comp
+for comp in comparisons:
+    anova_data[comp] = False
+    anova_data.loc[(anova_data['year'].str[:4].isin([comp.split('-')[0], comp.split('-')[1][:4]]) == True), comp] = True
 
-anova_data = anova_data.set_index(['case', 'year', 'yr_group', 'age_group_hrp', 'income_group'])[vars_ghg].stack().reset_index()\
-    .rename(columns={'level_5':'product', 0:'GHG'})
+anova_data = anova_data.set_index(['case', 'year', 'age_group_hrp', 'income_group'] + comparisons)[vars_ghg].stack().reset_index()\
+    .rename(columns={'level_' + str(4+len(comparisons)):'product', 0:'GHG'})
 anova_data['all'] = 'all'
 
 results = pd.DataFrame(columns=['product'])
 for cat in vars_ghg:
     for comp in comparisons:
         #perform the repeated measures ANOVA
-        temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data['yr_group'] == comp)]
+        temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data[comp] == True)]
         mod = 'GHG ~ C(year)'
         model = ols(mod, data=temp).fit()
         
@@ -235,7 +256,7 @@ for cat in vars_ghg:
         results = results.append(temp)
         for hhd_group in ['age_group_hrp', 'income_group']:
             #perform the repeated measures ANOVA
-            temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data['yr_group'] == comp)]
+            temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data[comp] == True)]
             temp['group'] = temp[hhd_group]
             mod = 'GHG ~ C(year) + C(group) + C(year):C(group)'
             model = ols(mod, data=temp).fit()
@@ -273,6 +294,8 @@ results_all.loc[results_all['p-value'] < 0.05, 'sig'] = '*'
 results_all.loc[results_all['p-value'] < 0.01, 'sig'] = '**'
 results_all = results_all.set_index(['product', 'comp'])[['sig', 'Diff']].unstack(level='comp')\
     .loc[['Total'] + order].swaplevel(axis=1)
+    
+results_all.to_csv(wd + 'Longitudinal_Emissions/outputs/anova_result.csv')
 
 
 results_age = results.loc[(results['hhd_group'] == 'age_group_hrp') & 
