@@ -231,6 +231,7 @@ anova_data = anova_data.set_index(['case', 'year', 'age_group_hrp', 'income_grou
 anova_data['all'] = 'all'
 
 results = pd.DataFrame(columns=['product'])
+results_noninteract = pd.DataFrame(columns=['product'])
 for cat in vars_ghg:
     for comp in comparisons:
         #perform the repeated measures ANOVA
@@ -246,38 +247,66 @@ for cat in vars_ghg:
         
         temp = pd.DataFrame(sm.stats.anova_lm(model, typ=2))[['PR(>F)']]
         temp.columns = ['p-value']
-        temp['group1'] = [(yr1, yr2) for x in range(len(temp))]; temp['group2'] = temp['group1']
+        temp['group1'] = yr1; temp['group2'] = yr2
         
         temp['Diff'] = diff
         temp['product'] = cat
         temp['hhd_group'] = 'All'
         temp['comp'] = comp
         
-        results = results.append(temp)
+        results_noninteract = results_noninteract.append(temp)
+        
         for hhd_group in ['age_group_hrp', 'income_group']:
             #perform the repeated measures ANOVA
-            temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data[comp] == True)]
+            temp = anova_data.loc[(anova_data['product'] == cat) & (anova_data[comp] == True)]\
+                .sort_values(hhd_group)
             temp['group'] = temp[hhd_group]
             mod = 'GHG ~ C(year) + C(group) + C(year):C(group)'
             model = ols(mod, data=temp).fit()
             
-            #res.tukey_hsd(df=temp, res_var='GHG', xfac_var='group', anova_model=mod)
-            #res.tukey_summary
+            # group
+            res.tukey_hsd(df=temp, res_var='GHG', xfac_var='group', anova_model=mod)
+            temp2 = res.tukey_summary
+            temp2['Diff'] = temp2['Diff'] *-1
+            temp2['product'] = cat; temp2['hhd_group'] = hhd_group; temp2['comp'] = comp
+            results_noninteract = results_noninteract.append(temp2)
             
-            #res.tukey_hsd(df=temp, res_var='GHG', xfac_var='year', anova_model=mod)
-            #res.tukey_summary
+            # year
+            res.tukey_hsd(df=temp, res_var='GHG', xfac_var='year', anova_model=mod)
+            temp2 = res.tukey_summary
+            temp2['Diff'] = temp2['Diff'] *-1
+            temp2['product'] = cat; temp2['hhd_group'] = hhd_group; temp2['comp'] = comp
+            results_noninteract = results_noninteract.append(temp2)
             
+            # interaction
             res.tukey_hsd(df=temp, res_var='GHG', xfac_var=['year', 'group'], anova_model=mod)
-            temp = res.tukey_summary[['group1', 'group2', 'p-value', 'Diff']]
+            temp2 = res.tukey_summary[['group1', 'group2', 'p-value', 'Diff']]
+            temp2['Diff'] = temp2['Diff'] *-1
+            temp2['product'] = cat; temp2['hhd_group'] = hhd_group; temp2['comp'] = comp
+            results = results.append(temp2)
             
-            temp['Diff'] = temp['Diff'] *-1
-             
-            temp['product'] = cat; temp['hhd_group'] = hhd_group; temp['comp'] = comp
-            
-            results = results.append(temp)
         print(comp)
     print(cat)
         
+
+results_noninteract_summary = results_noninteract.set_index(['product', 'hhd_group', 'group1', 'group2', 'comp'])\
+    [['Diff', 'p-value']].dropna(how='any')
+results_noninteract_summary['sig'] = ' '
+results_noninteract_summary.loc[results_noninteract_summary['p-value'] < 0.05, 'sig'] = '*'
+results_noninteract_summary.loc[results_noninteract_summary['p-value'] < 0.01, 'sig'] = '**'
+    
+results_noninteract_summary = results_noninteract_summary[['Diff', 'sig']].unstack(level=['hhd_group', 'comp', 'group1', 'group2'])\
+    .T.reset_index().sort_values(['hhd_group', 'comp', 'group1', 'group2', 'level_0'])\
+        .set_index(['hhd_group', 'comp', 'group1', 'group2', 'level_0']).T.loc[order + ['Total']]
+        
+results_noninteract_pct = results_noninteract.set_index(['product', 'hhd_group', 'group1', 'group2', 'comp'])\
+    [['Diff', 'p-value']].dropna(how='any')
+results_noninteract_pct['sig'] = 0
+results_noninteract_pct.loc[results_noninteract_pct['p-value'] < 0.05, 'sig'] = 1
+results_noninteract_pct['count'] = 1
+results_noninteract_pct = results_noninteract_pct.groupby(['hhd_group', 'comp', 'product']).sum()[['sig', 'count']]
+results_noninteract_pct['pct'] = results_noninteract_pct['sig'] / results_noninteract_pct['count'] * 100
+results_noninteract_pct = results_noninteract_pct[['pct']].unstack(level='product').T.droplevel(axis=0, level=0).loc[order + ['Total']]
 
 results['year_1'] = [x[0] for x in results['group1']]
 results['year_2'] = [x[0] for x in results['group2']]
@@ -308,12 +337,23 @@ results_age.loc[results_age['type'] == 'year', 'comp'] = results_age['group_1']
 results_age.loc[results_age['type'] == 'year', 'group_1'] = results_age['year_1']
 results_age.loc[results_age['type'] == 'year', 'group_2'] = results_age['year_2']
 
+results_age = results_age.rename(columns={'year_1':'year_2', 'year_2':'year_1'})
+
+res_age_yr = results_age.loc[results_age['type'] == 'year'].set_index(['product', 'comp', 'year_1', 'year_2'])[['p-value', 'Diff']]
+res_age_yr['sig'] = ' '
+res_age_yr.loc[res_age_yr['p-value'] < 0.05, 'sig'] = '*'
+res_age_yr.loc[res_age_yr['p-value'] < 0.01, 'sig'] = '**'
+res_age_yr = res_age_yr[['Diff', 'sig']].unstack(['comp', 'year_1', 'year_2']).T.reset_index()\
+    .sort_values(['comp', 'year_1', 'year_2', 'level_0']).set_index(['comp', 'year_1', 'year_2', 'level_0'])\
+        .T.loc[order + ['Total']]
+
+
 results_age = results_age[['product', 'hhd_group', 'group_1', 'group_2', 'comp', 'type', 'p-value']]
 
 results_age_summary = cp.copy(results_age)
 results_age['count'] = 1
 results_age['sig'] = 0; results_age.loc[results_age['p-value'] < 0.05, 'sig'] = 1
-results_age_summary = results_age.groupby(['hhd_group', 'comp', 'product', 'type']).sum()[['sig', 'count']]
+results_age_summary = results_age.groupby(['hhd_group', 'product', 'type']).sum()[['sig', 'count']]
 results_age_summary['pct'] = results_age_summary['sig'] / results_age_summary['count'] * 100
 results_age_summary = results_age_summary[['pct']].unstack('product')
 
@@ -335,11 +375,20 @@ results_inc.loc[results_inc['type'] == 'year', 'comp'] = results_inc['group_1']
 results_inc.loc[results_inc['type'] == 'year', 'group_1'] = results_inc['year_1']
 results_inc.loc[results_inc['type'] == 'year', 'group_2'] = results_inc['year_2']
 
+res_inc_yr = results_inc.loc[results_inc['type'] == 'year'].set_index(['product', 'comp', 'year_1', 'year_2'])[['p-value', 'Diff']]
+res_inc_yr['sig'] = ' '
+res_inc_yr.loc[res_inc_yr['p-value'] < 0.05, 'sig'] = '*'
+res_inc_yr.loc[res_inc_yr['p-value'] < 0.01, 'sig'] = '**'
+res_inc_yr = res_inc_yr[['Diff', 'sig']].unstack(['comp', 'year_1', 'year_2']).T.reset_index()\
+    .sort_values(['comp', 'year_1', 'year_2', 'level_0']).set_index(['comp', 'year_1', 'year_2', 'level_0'])\
+        .T.loc[order + ['Total']]
+
+
 results_inc = results_inc[['product', 'hhd_group', 'group_1', 'group_2', 'comp', 'type', 'p-value']]
 results_inc_summary = cp.copy(results_inc)
 results_inc['count'] = 1
 results_inc['sig'] = 0; results_inc.loc[results_inc['p-value'] < 0.05, 'sig'] = 1
-results_inc_summary = results_inc.groupby(['hhd_group', 'comp', 'product', 'type']).sum()[['sig', 'count']]
+results_inc_summary = results_inc.groupby(['hhd_group', 'product', 'type']).sum()[['sig', 'count']]
 results_inc_summary['pct'] = results_inc_summary['sig'] / results_inc_summary['count'] * 100
 results_inc_summary = results_inc_summary[['pct']].unstack('product')
 
@@ -353,6 +402,8 @@ results_inc_group = results_inc.loc[results_inc['type'] == 'group'].set_index(['
 results_summary = results_age_summary.droplevel(axis=1, level=0).reset_index()\
     .append(results_inc_summary.droplevel(axis=1, level=0).reset_index())
 
+#results_summary2 =results_summary.groupby(['hhd_group', 'type']).mean().T
+
 check = results_summary.set_index(['hhd_group', 'comp', 'type'])[order]
 
 check_total = results_summary.set_index(['hhd_group', 'comp', 'type'])[['Total']]
@@ -362,21 +413,28 @@ for var_type in ['year', 'group']:
         .reset_index().rename(columns={0:'pct'})
     sns.barplot(data=temp, x='comp', y='pct', hue='product')
     
-'''
-for item in ['year_1', 'year_2']:
-    results[item] = results[item].map({'2007_cpi':'before', '2009_cpi':'after', '2019_cpi':'before', '2020_cpi':'after'})
 
-results_years = results.loc[(results['year_1'] != results['year_2']) & (results['group_1'] == results['group_2'])]\
-    .set_index(['product', 'hhd_group', 'group_1', 'comp', 'year_1', 'year_2'])[['p-value']].unstack(level=['year_1', 'product'])
+res_yr = pd.DataFrame(res_age_yr.join(res_inc_yr).unstack()).unstack(level='level_0').droplevel(axis=1, level=0)[['sig']].reset_index()
+
+res_yr['year_1'] = [int(x[:4]) for x in res_yr['year_1']]
+res_yr['year_2'] = [int(x[:4]) for x in res_yr['year_2']]
+
+res_yr['min'] = res_yr[['year_1', 'year_2']].min(1)
+res_yr['max'] = res_yr[['year_1', 'year_2']].max(1)
+
+res_yr['year'] = res_yr['min'].astype(str) + '-' + res_yr['max'].astype(str) + '_cpi'
 
 
+check5 = check3.stack().reset_index().rename(columns={0:'Diff'})
+check5['year_1'] = [x[:4] + '_cpi' for x in check5['year']]
 
-results_groups = results.loc[(results['year_1'] == results['year_2']) & (results['group_1'] != results['group_2'])]\
-    .set_index(['product', 'hhd_group', 'group_1', 'group_2', 'year_1'])[['p-value']].unstack(level=['product'])
+group_dict2 = {group_dict[x]:x for x in list(group_dict.keys())}
+check5['comp'] = check5['group'].map(group_dict2).astype(str)
+check5.loc[check5['comp'].str.len() == 1, 'comp'] = check5['comp'] + '.0'
 
-for item in ['year_1', 'year_2']:
-    results[item] = results[item].map({'2007_cpi':'before', '2009_cpi':'after', '2019_cpi':'before', '2020_cpi':'after'})
 
-results_years = results.loc[(results['year_1'] != results['year_2']) & (results['group_1'] == results['group_2'])]\
-    .set_index(['product', 'hhd_group', 'group_1', 'comp', 'year_1', 'year_2'])[['p-value']].unstack(level=['year_1', 'product'])
-'''
+res_yr = res_yr.merge(check5, on=['year', 'product', 'comp'], how='left')
+res_yr['year'] = res_yr['max'].astype(str) + ' - ' + res_yr['min'].astype(str)
+res_yr = res_yr.set_index(['hhd_group', 'group', 'product', 'year'])[['Diff', 'sig']].unstack(level=['hhd_group', 'group', 'year'])
+res_yr = res_yr.T.reset_index().sort_values(['hhd_group', 'group', 'year', 'level_0'])\
+    .set_index(['hhd_group', 'group', 'year', 'level_0']).T.loc[order + ['Total']]
